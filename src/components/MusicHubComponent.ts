@@ -381,10 +381,36 @@ export class MusicHubComponent {
 				coverImg.src = track.metadata.cover;
 				coverImg.alt = "专辑封面";
 
-				coverImg.onerror = () => {
+				// 添加加载状态指示
+				coverImg.style.opacity = "0";
+				coverImg.style.transition = "opacity 0.3s ease";
+
+				coverImg.onload = () => {
+					coverImg.style.opacity = "1";
+					console.log(
+						`Cover image loaded successfully for: ${track.name}`
+					);
+				};
+
+				coverImg.onerror = (e) => {
+					console.warn(
+						`Failed to load cover image for: ${track.name}`,
+						e
+					);
 					coverContainer.empty();
 					setIcon(coverContainer, ICONS.MUSIC);
 				};
+
+				// 设置加载超时
+				setTimeout(() => {
+					if (coverImg.style.opacity === "0" && coverImg.parentNode) {
+						console.warn(
+							`Cover image loading timed out for: ${track.name}`
+						);
+						coverContainer.empty();
+						setIcon(coverContainer, ICONS.MUSIC);
+					}
+				}, 5000);
 			} else {
 				setIcon(coverContainer, ICONS.MUSIC);
 			}
