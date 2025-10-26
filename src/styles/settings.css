@@ -1,0 +1,30 @@
+/* Status Bar Music Plugin - Settings Styles */
+
+.setting-item-description ul {
+	margin: 8px 0;
+	padding-left: 20px;
+}
+
+.setting-item-description li {
+	margin: 4px 0;
+}
+
+.setting-item-description strong {
+	color: var(--text-accent);
+}
+
+/* 设置页面响应式布局 */
+@media (max-width: 768px) {
+	.setting-item {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.setting-item-info {
+		margin-bottom: 8px;
+	}
+
+	.setting-item-control {
+		width: 100%;
+	}
+}

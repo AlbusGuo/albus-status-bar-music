@@ -1,0 +1,155 @@
+/* Status Bar Music Plugin - Music Hub Styles */
+
+.albus-status-bar-music-hub-container {
+	position: fixed;
+	z-index: 999;
+	width: 300px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 12px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	bottom: 40px !important;
+	transform-origin: bottom left;
+	transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+
+.albus-status-bar-music-hub-container:not([style*="display: none"]) {
+	animation: hub-enter 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes hub-enter {
+	from {
+		opacity: 0;
+		transform: scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+.albus-status-bar-music-hub-container.is-dragging {
+	cursor: grabbing;
+}
+
+/* 功能按钮栏 */
+.hub-function-bar {
+	display: grid;
+	grid-template-columns: auto auto 1fr auto;
+	align-items: center;
+	gap: 8px;
+}
+
+.hub-function-button {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 5px;
+	border-radius: 5px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background-color 0.1s ease, transform 0.1s ease;
+	color: var(--icon-color) !important;
+}
+
+.hub-function-button:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.hub-function-button:active {
+	transform: scale(0.9);
+}
+
+.hub-function-button.is-loading {
+	animation: spin 1s linear infinite;
+}
+
+.hub-function-button .svg-icon {
+	width: 20px;
+	height: 20px;
+	color: var(--icon-color);
+}
+
+.hub-function-button.is-favorite .svg-icon {
+	color: var(--icon-color);
+	fill: var(--icon-color);
+}
+
+.hub-function-select {
+	flex-grow: 1;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 5px;
+	font-size: 12px;
+	padding: 5px 8px;
+}
+
+/* 交互式进度条 */
+.hub-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+}
+
+.hub-progress-container {
+	position: relative;
+	width: 100%;
+	height: 10px;
+	border-radius: 5px;
+	cursor: grab;
+	display: flex;
+	align-items: center;
+	padding: 3px 0;
+}
+
+.hub-progress-container:active {
+	cursor: grabbing;
+}
+
+.hub-progress-container:hover .hub-progress-thumb {
+	opacity: 1;
+}
+
+.hub-progress-container::before {
+	content: "";
+	position: absolute;
+	left: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	height: 4px;
+	width: 100%;
+	background: var(--background-modifier-border);
+	border-radius: 2px;
+}
+
+.hub-progress-fill {
+	position: relative;
+	z-index: 1;
+	height: 4px;
+	background-color: var(--interactive-accent);
+	border-radius: 2px;
+}
+
+.hub-progress-thumb {
+	position: absolute;
+	z-index: 2;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 12px;
+	height: 12px;
+	background-color: white;
+	border: 2px solid var(--interactive-accent);
+	border-radius: 50%;
+	pointer-events: none;
+	opacity: 0;
+}
+
+.hub-time-display {
+	font-size: 11px;
+	color: var(--text-muted);
+	text-align: center;
+}

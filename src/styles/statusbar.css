@@ -1,0 +1,117 @@
+/* Status Bar Music Plugin - Status Bar Styles */
+
+.albus-status-bar-music-statusbar {
+	display: flex;
+	align-items: center;
+	gap: 2px;
+	margin: 0;
+	padding: 0;
+}
+
+.albus-status-bar-music-button {
+	background: var(--background-primary) !important;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 5px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: none !important;
+	transition: background-color 0.1s ease, transform 0.1s ease;
+	width: 30px;
+	height: 30px;
+	padding: 0;
+}
+
+.albus-status-bar-music-button svg {
+	color: var(--icon-color) !important;
+}
+
+.albus-status-bar-music-button:hover {
+	background: var(--background-modifier-border) !important;
+}
+
+.albus-status-bar-music-button:active {
+	transform: scale(0.9);
+}
+
+.albus-status-bar-music-button .svg-icon {
+	width: 15px;
+	height: 15px;
+	color: var(--text-normal);
+}
+
+.albus-status-bar-music-button.is-loading {
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+.albus-status-bar-music-track-button {
+	cursor: pointer;
+	background: var(--background-primary) !important;
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: none !important;
+	width: 150px;
+	height: 30px;
+	position: relative;
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.albus-status-bar-music-track-button:hover {
+	background-color: var(--background-modifier-hover) !important;
+}
+
+.albus-status-bar-progress {
+	position: absolute;
+	top: 0;
+	left: 0;
+	height: 100%;
+	width: 0%;
+	background: var(--interactive-accent);
+	opacity: 0.3;
+	z-index: 1;
+	pointer-events: none;
+	transition: width 0.1s linear;
+}
+
+.albus-status-bar-music-track-button span {
+	position: relative;
+	z-index: 2;
+	white-space: nowrap;
+	font-size: var(--font-ui-small);
+	padding: 0 8px;
+}
+
+.albus-status-bar-music-track-button span.is-scrolling {
+	display: inline-block;
+	animation: scroll-text-animation 10s linear infinite;
+}
+
+@keyframes scroll-text-animation {
+	0% {
+		transform: translateX(0);
+	}
+	40% {
+		transform: translateX(calc(-100% + var(--button-width, 150px) - 20px));
+	}
+	60% {
+		transform: translateX(calc(-100% + var(--button-width, 150px) - 20px));
+	}
+	90% {
+		transform: translateX(0);
+	}
+	100% {
+		transform: translateX(0);
+	}
+}
