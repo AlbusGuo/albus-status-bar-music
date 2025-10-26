@@ -33,17 +33,60 @@ export class MetadataParser {
 			return metadata;
 		}
 
-		const tagSize = this.readSyncSafeInt(dataView, 6);
-		let offset = 10;
+		// 获取版本信息
+		const majorVersion = dataView.getUint8(3);
+		const minorVersion = dataView.getUint8(4);
+		const flags = dataView.getUint8(5);
 
-		while (offset < tagSize + 10 && offset + 10 < dataView.byteLength) {
-			const frame = this.readFrame(dataView, offset);
-			if (!frame) break;
+		console.log(
+			`ID3v2.${majorVersion}.${minorVersion} detected, flags: ${flags}`
+		);
 
-			this.parseFrame(frame, metadata);
-			offset += 10 + frame.size;
+		// 检查是否支持的版本
+		if (majorVersion < 2 || majorVersion > 4) {
+			console.warn(
+				`Unsupported ID3v2 version: ${majorVersion}.${minorVersion}`
+			);
+			return metadata;
 		}
 
+		const tagSize = this.readSyncSafeInt(dataView, 6);
+		console.log(`Tag size: ${tagSize} bytes`);
+
+		let offset = 10;
+
+		// 如果有扩展头，跳过它
+		if (flags & 0x40) {
+			// Extended header flag
+			if (offset + 4 <= dataView.byteLength) {
+				const extHeaderSize = this.readSyncSafeInt(dataView, offset);
+				offset += 4 + extHeaderSize;
+				console.log(`Skipped extended header: ${extHeaderSize} bytes`);
+			}
+		}
+
+		let frameCount = 0;
+		while (offset < tagSize + 10 && offset + 10 < dataView.byteLength) {
+			const frame = this.readFrame(dataView, offset);
+			if (!frame) {
+				// 如果遇到padding或无效帧，停止解析
+				break;
+			}
+
+			console.log(`Found frame: ${frame.id}, size: ${frame.size}`);
+			this.parseFrame(frame, metadata);
+			frameCount++;
+
+			offset += 10 + frame.size;
+
+			// 避免无限循环
+			if (frameCount > 50) {
+				console.warn("Too many frames detected, stopping parsing");
+				break;
+			}
+		}
+
+		console.log(`Parsed ${frameCount} frames`);
 		return metadata;
 	}
 
@@ -60,7 +103,18 @@ export class MetadataParser {
 			return null;
 		}
 
-		const size = this.readSyncSafeInt(dataView, offset + 4);
+		// 检查ID3v2版本来决定大小字段的读取方式
+		const majorVersion = dataView.getUint8(3);
+		let size: number;
+
+		if (majorVersion >= 4) {
+			// ID3v2.4 使用同步安全整数
+			size = this.readSyncSafeInt(dataView, offset + 4);
+		} else {
+			// ID3v2.3 及更早版本使用普通的32位整数
+			size = dataView.getUint32(offset + 4);
+		}
+
 		const flags = dataView.getUint16(offset + 8);
 
 		if (size === 0 || offset + 10 + size > dataView.byteLength) {
@@ -157,34 +211,51 @@ export class MetadataParser {
 
 			if (offset >= data.length) return null;
 
-			// 图片类型
-			offset++; // 跳过图片类型字节
+			// 图片类型 (1字节)
+			const pictureType = data[offset++];
 
 			if (offset >= data.length) return null;
 
-			// 描述
+			// 描述字段 - 更准确的解析
+			let descriptionBytes = 0;
 			if (encoding === 0 || encoding === 3) {
-				// 单字节编码
-				while (offset < data.length && data[offset] !== 0) {
-					offset++;
-				}
-				offset++;
-			} else {
-				// 双字节编码
+				// ISO-8859-1 或 UTF-8 (单字节编码)
 				while (
-					offset < data.length - 1 &&
-					(data[offset] !== 0 || data[offset + 1] !== 0)
+					offset + descriptionBytes < data.length &&
+					data[offset + descriptionBytes] !== 0
 				) {
-					offset += 2;
+					descriptionBytes++;
 				}
-				offset += 2;
+				if (offset + descriptionBytes < data.length) {
+					descriptionBytes++; // 包含终止符
+				}
+			} else if (encoding === 1 || encoding === 2) {
+				// UTF-16 (双字节编码)
+				while (offset + descriptionBytes + 1 < data.length) {
+					if (
+						data[offset + descriptionBytes] === 0 &&
+						data[offset + descriptionBytes + 1] === 0
+					) {
+						descriptionBytes += 2; // 包含双字节终止符
+						break;
+					}
+					descriptionBytes += 2;
+				}
 			}
 
+			offset += descriptionBytes;
+
 			if (offset >= data.length) return null;
 
-			// 图片数据
+			// 确保有足够的数据用于图片
 			const imageData = data.slice(offset);
 			if (imageData.length === 0) return null;
+
+			// 验证图片数据的完整性
+			if (!this.isValidImageData(imageData)) {
+				console.warn("Invalid image data detected");
+				return null;
+			}
 
 			return this.createBlobUrl(imageData, mimeType);
 		} catch (error) {
@@ -203,15 +274,17 @@ export class MetadataParser {
 		try {
 			const detectedMimeType =
 				mimeType || this.detectImageType(imageData);
-			// 创建一个新的Uint8Array来确保正确的类型
-			const arrayBuffer = new ArrayBuffer(imageData.length);
-			const view = new Uint8Array(arrayBuffer);
-			view.set(imageData);
 
-			const blob = new Blob([arrayBuffer], { type: detectedMimeType });
+			// 直接使用原始数据创建Blob，避免不必要的复制
+			const blob = new Blob([imageData], { type: detectedMimeType });
 			const blobUrl = URL.createObjectURL(blob);
 
+			// 存储引用以便清理
 			this.blobUrls.set(blobUrl, blob);
+
+			console.log(
+				`Created blob URL for ${detectedMimeType} image, size: ${imageData.length} bytes`
+			);
 			return blobUrl;
 		} catch (error) {
 			console.warn("Blob URL creation error:", error);
@@ -220,31 +293,149 @@ export class MetadataParser {
 	}
 
 	/**
-	 * 检测图片类型
+	 * 验证图片数据的完整性
 	 */
-	private detectImageType(data: Uint8Array): string {
+	private isValidImageData(data: Uint8Array): boolean {
+		if (data.length < 4) return false;
+
+		// 检查常见图片格式的魔术字节
+		// JPEG
 		if (data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) {
-			return "image/jpeg";
+			// 查找JPEG结束标记
+			for (let i = data.length - 2; i >= 0; i--) {
+				if (data[i] === 0xff && data[i + 1] === 0xd9) {
+					return true;
+				}
+			}
+			// 如果没有找到结束标记，但有开始标记，仍然尝试加载
+			return true;
 		}
+
+		// PNG
 		if (
 			data[0] === 0x89 &&
 			data[1] === 0x50 &&
 			data[2] === 0x4e &&
 			data[3] === 0x47
 		) {
-			return "image/png";
+			return data.length >= 8; // PNG最小头部
 		}
+
+		// GIF
 		if (
 			data[0] === 0x47 &&
 			data[1] === 0x49 &&
 			data[2] === 0x46 &&
 			data[3] === 0x38
 		) {
+			return data.length >= 6;
+		}
+
+		// BMP
+		if (data[0] === 0x42 && data[1] === 0x4d) {
+			return data.length >= 14;
+		}
+
+		// WebP
+		if (
+			data[0] === 0x52 &&
+			data[1] === 0x49 &&
+			data[2] === 0x46 &&
+			data[3] === 0x46 &&
+			data[8] === 0x57 &&
+			data[9] === 0x45 &&
+			data[10] === 0x42 &&
+			data[11] === 0x50
+		) {
+			return true;
+		}
+
+		// 如果不是已知格式，但有足够的数据，尝试加载
+		return data.length > 100;
+	}
+
+	/**
+	 * 检测图片类型
+	 */
+	private detectImageType(data: Uint8Array): string {
+		if (data.length < 4) return "image/jpeg"; // 默认fallback
+
+		// JPEG
+		if (data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) {
+			return "image/jpeg";
+		}
+
+		// PNG
+		if (
+			data[0] === 0x89 &&
+			data[1] === 0x50 &&
+			data[2] === 0x4e &&
+			data[3] === 0x47 &&
+			data.length >= 8 &&
+			data[4] === 0x0d &&
+			data[5] === 0x0a &&
+			data[6] === 0x1a &&
+			data[7] === 0x0a
+		) {
+			return "image/png";
+		}
+
+		// GIF87a 或 GIF89a
+		if (
+			data[0] === 0x47 &&
+			data[1] === 0x49 &&
+			data[2] === 0x46 &&
+			data[3] === 0x38 &&
+			data.length >= 6 &&
+			(data[4] === 0x37 || data[4] === 0x39) &&
+			data[5] === 0x61
+		) {
 			return "image/gif";
 		}
-		if (data[0] === 0x42 && data[1] === 0x4d) {
+
+		// BMP
+		if (data[0] === 0x42 && data[1] === 0x4d && data.length >= 14) {
 			return "image/bmp";
 		}
+
+		// WebP
+		if (
+			data.length >= 12 &&
+			data[0] === 0x52 &&
+			data[1] === 0x49 &&
+			data[2] === 0x46 &&
+			data[3] === 0x46 &&
+			data[8] === 0x57 &&
+			data[9] === 0x45 &&
+			data[10] === 0x42 &&
+			data[11] === 0x50
+		) {
+			return "image/webp";
+		}
+
+		// TIFF (Little-endian)
+		if (
+			data.length >= 4 &&
+			data[0] === 0x49 &&
+			data[1] === 0x49 &&
+			data[2] === 0x2a &&
+			data[3] === 0x00
+		) {
+			return "image/tiff";
+		}
+
+		// TIFF (Big-endian)
+		if (
+			data.length >= 4 &&
+			data[0] === 0x4d &&
+			data[1] === 0x4d &&
+			data[2] === 0x00 &&
+			data[3] === 0x2a
+		) {
+			return "image/tiff";
+		}
+
+		// 默认返回JPEG
 		return "image/jpeg";
 	}
 
