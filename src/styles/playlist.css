@@ -1,0 +1,108 @@
+/* Status Bar Music Plugin - Playlist Styles */
+
+.hub-playlist {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	max-height: 300px;
+	overflow-y: auto;
+}
+
+.playlist-item {
+	padding: 8px 12px;
+	cursor: pointer;
+	border-radius: 4px;
+	user-select: none;
+	transition: background-color 0.1s ease;
+}
+
+.playlist-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.playlist-item.is-playing {
+	color: var(--text-accent);
+	font-weight: 600;
+	background-color: var(--background-modifier-hover);
+}
+
+.playlist-item-content {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.playlist-item-cover {
+	width: 40px;
+	height: 40px;
+	border-radius: 4px;
+	background: var(--background-modifier-border);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	overflow: hidden;
+}
+
+.playlist-cover-img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	border-radius: 4px;
+}
+
+.playlist-item-cover .svg-icon {
+	width: 20px;
+	height: 20px;
+	color: var(--text-muted);
+}
+
+.playlist-item-info {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	flex: 1;
+	min-width: 0;
+}
+
+.playlist-item-name {
+	font-weight: 500;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-size: var(--font-ui-small);
+}
+
+.playlist-item-meta {
+	font-size: 11px;
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.playlist-empty {
+	text-align: center;
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 20px;
+}
+
+/* 滚动条样式 */
+.hub-playlist::-webkit-scrollbar {
+	width: 6px;
+}
+
+.hub-playlist::-webkit-scrollbar-track {
+	background: var(--background-modifier-border);
+	border-radius: 3px;
+}
+
+.hub-playlist::-webkit-scrollbar-thumb {
+	background: var(--text-muted);
+	border-radius: 3px;
+}
+
+.hub-playlist::-webkit-scrollbar-thumb:hover {
+	background: var(--text-normal);
+}
