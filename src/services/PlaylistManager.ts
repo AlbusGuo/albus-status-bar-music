@@ -5,24 +5,55 @@ import {
 	PlaybackMode,
 	PlaylistManagerEvents,
 	PluginSettings,
+	TrackMetadata,
 } from "../types";
 import { isSupportedAudioFile, normalizePath } from "../utils/helpers";
-import { MetadataParser } from "./MetadataParser";
+import { MetadataManager } from "./MetadataManager";
 
 export class PlaylistManager {
 	private app: App;
 	private settings: PluginSettings;
-	private metadataParser: MetadataParser;
+	private settingsRef: () => PluginSettings;
+	private metadataManager: MetadataManager;
 	private fullPlaylist: MusicTrack[] = [];
 	private viewPlaylist: MusicTrack[] = [];
 	private currentTrack: MusicTrack | null = null;
 	private currentCategory: CategoryType = "all";
 	private events: Partial<PlaylistManagerEvents> = {};
 
-	constructor(app: App, settings: PluginSettings) {
+	constructor(app: App, settings: PluginSettings, settingsRef?: () => PluginSettings) {
 		this.app = app;
 		this.settings = settings;
-		this.metadataParser = new MetadataParser();
+		this.settingsRef = settingsRef || (() => settings);
+		this.metadataManager = new MetadataManager(app);
+		
+		// 设置元数据更新回调
+		this.metadataManager.setMetadataUpdateCallback((metadata) => {
+			// 当元数据更新时，重新构建播放列表
+			this.rebuildPlaylistFromMetadata(metadata);
+		});
+		
+		// 初始化元数据管理器
+		this.metadataManager.initializeFromSettings(settings);
+	}
+
+	/**
+	 * 从元数据重建播放列表
+	 */
+	private rebuildPlaylistFromMetadata(metadata: Map<string, TrackMetadata>): void {
+		// 如果当前有播放列表，重新应用元数据
+		if (this.fullPlaylist.length > 0) {
+			this.fullPlaylist.forEach(track => {
+				const trackMetadata = metadata.get(track.path);
+				if (trackMetadata) {
+					track.metadata = trackMetadata;
+				}
+			});
+			
+			// 更新视图播放列表
+			this.updateView();
+			this.emit("onPlaylistUpdate", this.viewPlaylist);
+		}
 	}
 
 	/**
@@ -49,12 +80,15 @@ export class PlaylistManager {
 	}
 
 	/**
-	 * 加载完整播放列表
+	 * 加载完整播放列表（优化版本）
 	 */
 	async loadFullPlaylist(): Promise<void> {
 		this.fullPlaylist = [];
 
-		const validFolders = this.settings.musicFolderPaths.filter(
+		// 获取最新的设置
+		const currentSettings = this.settingsRef();
+
+		const validFolders = currentSettings.musicFolderPaths.filter(
 			(p) => p && p.trim() !== ""
 		);
 		if (validFolders.length === 0) {
@@ -62,36 +96,60 @@ export class PlaylistManager {
 			return;
 		}
 
+		// 分批处理文件收集，避免阻塞UI
 		const allFiles = this.app.vault.getFiles();
 		const collectedFiles = new Map<string, TFile>();
+		const batchSize = 50; // 每批处理50个文件
+		let processed = 0;
 
-		// 收集音乐文件
-		validFolders.forEach((folderPath) => {
-			const normalizedPath = normalizePath(folderPath);
-			allFiles.forEach((file) => {
-				if (
-					file.path.startsWith(normalizedPath) &&
-					isSupportedAudioFile(file.name)
-				) {
-					collectedFiles.set(file.path, file);
+		for (let i = 0; i < allFiles.length; i += batchSize) {
+			const batch = allFiles.slice(i, i + batchSize);
+			
+			// 处理当前批次
+			batch.forEach(file => {
+				const isMusicFile = isSupportedAudioFile(file.name);
+				if (isMusicFile) {
+					const isInValidFolder = validFolders.some(folder => {
+						const normalizedPath = normalizePath(folder);
+						return file.path.startsWith(normalizedPath);
+					});
+					
+					if (isInValidFolder) {
+						collectedFiles.set(file.path, file);
+					}
 				}
+				processed++;
 			});
-		});
+
+			// 每处理一批后稍作延迟，让UI有机会响应
+			if (i + batchSize < allFiles.length) {
+				await new Promise(resolve => setTimeout(resolve, 10));
+			}
+		}
+
+		console.log(`Processed ${processed} files, found ${collectedFiles.size} music files`);
 
 		// 创建播放列表项
 		const fileArray = Array.from(collectedFiles.values());
-		this.fullPlaylist = fileArray.map((file, index) => ({
-			id: index,
-			name: file.basename,
-			path: file.path,
-			resourcePath: this.app.vault.getResourcePath(file),
-			metadata: this.settings.metadata[file.path] || {
+		
+		this.fullPlaylist = fileArray.map((file, index) => {
+			// 从 MetadataManager 获取元数据（封面会延迟加载）
+			const savedMetadata = this.metadataManager.getMetadata(file.path);
+			const metadata = savedMetadata || {
 				title: file.basename,
 				artist: "未知艺术家",
 				album: "未知专辑",
 				cover: null,
-			},
-		}));
+			};
+			
+			return {
+				id: index,
+				name: file.basename,
+				path: file.path,
+				resourcePath: this.app.vault.getResourcePath(file),
+				metadata: metadata,
+			};
+		});
 
 		this.updateView();
 		this.emit("onPlaylistUpdate", this.viewPlaylist);
@@ -101,59 +159,27 @@ export class PlaylistManager {
 	 * 刷新元数据
 	 */
 	async refreshMetadata(): Promise<void> {
-		const validFolders = this.settings.musicFolderPaths.filter(
+		console.log("PlaylistManager: Starting metadata refresh via MetadataManager");
+		
+		const currentSettings = this.settingsRef();
+		const validFolders = currentSettings.musicFolderPaths.filter(
 			(p) => p && p.trim() !== ""
 		);
+		
 		if (validFolders.length === 0) {
+			console.warn("PlaylistManager: No valid music folders found");
+			this.emit("onPlaylistUpdate", []);
 			return;
 		}
 
-		const allFiles = this.app.vault.getFiles();
-		const filesToProcess: TFile[] = [];
-
-		// 收集需要处理的音乐文件
-		validFolders.forEach((folderPath) => {
-			const normalizedPath = normalizePath(folderPath);
-			allFiles.forEach((file) => {
-				if (
-					file.path.startsWith(normalizedPath) &&
-					isSupportedAudioFile(file.name)
-				) {
-					filesToProcess.push(file);
-				}
-			});
-		});
-
-		// 清空现有元数据
-		this.settings.metadata = {};
-
-		// 处理每个文件的元数据
-		for (const file of filesToProcess) {
-			try {
-				const arrayBuffer = await this.app.vault.readBinary(file);
-				const metadata = await this.metadataParser.extractMetadata(
-					arrayBuffer
-				);
-				this.settings.metadata[file.path] = metadata;
-
-				// 给UI一个更新的机会
-				await new Promise((resolve) => setTimeout(resolve, 10));
-			} catch (error) {
-				console.error(
-					`Failed to extract metadata from ${file.path}:`,
-					error
-				);
-				this.settings.metadata[file.path] = {
-					title: file.basename,
-					artist: "未知艺术家",
-					album: "未知专辑",
-					cover: null,
-				};
-			}
-		}
-
-		// 重新加载播放列表
-		await this.loadFullPlaylist();
+		// 使用 MetadataManager 刷新元数据
+		await this.metadataManager.refreshAllMetadata(validFolders);
+		
+		// 更新设置对象中的元数据
+		const metadataExport = this.metadataManager.exportToSettings();
+		currentSettings.metadata = metadataExport.metadata;
+		
+		console.log("PlaylistManager: Metadata refresh completed");
 	}
 
 	/**
@@ -363,6 +389,6 @@ export class PlaylistManager {
 	 * 清理资源
 	 */
 	cleanup(): void {
-		this.metadataParser.cleanup();
+		this.metadataManager.cleanup();
 	}
 }

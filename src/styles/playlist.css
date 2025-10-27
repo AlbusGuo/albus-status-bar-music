@@ -74,8 +74,22 @@
 }
 
 .playlist-item-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.playlist-item-artist {
 	font-size: 11px;
 	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.playlist-item-album {
+	font-size: 10px;
+	color: var(--text-faint);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;

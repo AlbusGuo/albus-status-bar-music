@@ -36,8 +36,11 @@ export default class StatusBarMusicPlugin extends Plugin {
 			// 添加设置页面
 			this.addSettingTab(this.settingsTab);
 
-			// 加载播放列表
-			await this.playlistManager.loadFullPlaylist();
+			// 异步延迟加载播放列表，避免阻塞 Obsidian 启动
+			setTimeout(async () => {
+				await this.playlistManager.loadFullPlaylist();
+				console.log("Playlist loaded asynchronously");
+			}, 500); // 增加延迟时间
 
 			console.log("Status Bar Music plugin loaded successfully");
 		} catch (error) {
@@ -49,15 +52,14 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 * 初始化服务
 	 */
 	private initializeServices(): void {
-		this.playlistManager = new PlaylistManager(this.app, this.settings);
+		this.playlistManager = new PlaylistManager(this.app, this.settings, () => this.settings);
 		this.audioPlayer = new AudioPlayerService();
 
 		this.settingsTab = new SettingsTab(
 			this.app,
 			this,
 			this.settings,
-			() => this.saveSettings(),
-			() => this.playlistManager.refreshMetadata()
+			() => this.saveSettings()
 		);
 	}
 
@@ -320,7 +322,21 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 * 保存设置
 	 */
 	async saveSettings(): Promise<void> {
+		// 确保元数据管理器的最新数据已导出到设置
+		if (this.playlistManager) {
+			const metadataManager = (this.playlistManager as any).metadataManager;
+			if (metadataManager && metadataManager.needsSave()) {
+				const metadataExport = metadataManager.exportToSettings();
+				this.settings.metadata = metadataExport.metadata;
+			}
+		}
+		
+		const metadataCount = Object.keys(this.settings.metadata || {}).length;
+		console.log(`Saving settings with ${metadataCount} metadata entries`);
+		
 		await this.saveData(this.settings);
+		
+		console.log("Settings saved successfully");
 
 		// 更新设置页面的设置引用
 		if (this.settingsTab) {

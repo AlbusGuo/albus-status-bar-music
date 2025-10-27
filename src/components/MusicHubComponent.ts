@@ -374,6 +374,7 @@ export class MusicHubComponent {
 			const coverContainer = content.createEl("div", {
 				cls: "playlist-item-cover",
 			});
+			
 			if (track.metadata?.cover) {
 				const coverImg = coverContainer.createEl("img", {
 					cls: "playlist-cover-img",
@@ -381,36 +382,47 @@ export class MusicHubComponent {
 				coverImg.src = track.metadata.cover;
 				coverImg.alt = "专辑封面";
 
-				// 添加加载状态指示
-				coverImg.style.opacity = "0";
-				coverImg.style.transition = "opacity 0.3s ease";
-
-				coverImg.onload = () => {
+				// 优化加载逻辑：先检查图片是否已缓存
+				const testImg = new Image();
+				testImg.onload = () => {
+					// 图片已缓存，直接显示
 					coverImg.style.opacity = "1";
-					console.log(
-						`Cover image loaded successfully for: ${track.name}`
-					);
 				};
-
-				coverImg.onerror = (e) => {
-					console.warn(
-						`Failed to load cover image for: ${track.name}`,
-						e
-					);
+				testImg.onerror = () => {
+					// 图片加载失败，显示默认图标
 					coverContainer.empty();
 					setIcon(coverContainer, ICONS.MUSIC);
 				};
+				testImg.src = track.metadata.cover;
 
-				// 设置加载超时
-				setTimeout(() => {
-					if (coverImg.style.opacity === "0" && coverImg.parentNode) {
+				// 如果图片未缓存，使用淡入效果
+				if (testImg.complete) {
+					coverImg.style.opacity = "1";
+				} else {
+					coverImg.style.opacity = "0";
+					coverImg.style.transition = "opacity 0.2s ease";
+					
+					coverImg.onload = () => {
+						coverImg.style.opacity = "1";
+					};
+					
+					coverImg.onerror = (e) => {
 						console.warn(
-							`Cover image loading timed out for: ${track.name}`
+							`Failed to load cover image for: ${track.name}`,
+							e
 						);
 						coverContainer.empty();
 						setIcon(coverContainer, ICONS.MUSIC);
-					}
-				}, 5000);
+					};
+
+					// 减少超时时间
+					setTimeout(() => {
+						if (coverImg.style.opacity === "0" && coverImg.parentNode) {
+							coverContainer.empty();
+							setIcon(coverContainer, ICONS.MUSIC);
+						}
+					}, 2000);
+				}
 			} else {
 				setIcon(coverContainer, ICONS.MUSIC);
 			}
@@ -426,11 +438,20 @@ export class MusicHubComponent {
 			const meta = info.createEl("div", {
 				cls: "playlist-item-meta",
 			});
-			const artistText = track.metadata?.artist || "未知艺术家";
-			const albumText = track.metadata?.album
-				? ` • ${track.metadata.album}`
-				: "";
-			meta.setText(artistText + albumText);
+			
+			// 艺术家行
+			const artistEl = meta.createEl("div", {
+				cls: "playlist-item-artist",
+				text: track.metadata?.artist || "未知艺术家",
+			});
+			
+			// 专辑行
+			if (track.metadata?.album) {
+				const albumEl = meta.createEl("div", {
+					cls: "playlist-item-album",
+					text: track.metadata.album,
+				});
+			}
 
 			// 事件监听
 			li.draggable = true;
@@ -443,6 +464,8 @@ export class MusicHubComponent {
 			});
 		});
 	}
+
+	
 
 	/**
 	 * 设置刷新按钮加载状态
