@@ -345,6 +345,27 @@ export default class StatusBarMusicPlugin extends Plugin {
 	}
 
 	/**
+	 * 清空元数据缓存
+	 */
+	async clearMetadataCache(): Promise<void> {
+		try {
+			// 清空播放列表管理器中的缓存
+			this.playlistManager.clearMetadataCache();
+			
+			// 清空设置中的元数据
+			this.settings.metadata = {};
+			
+			// 保存设置
+			await this.saveSettings();
+			
+			console.log("Metadata cache cleared from all components");
+		} catch (error) {
+			console.error("Failed to clear metadata cache:", error);
+			throw error;
+		}
+	}
+
+	/**
 	 * 卸载插件
 	 */
 	onunload(): void {

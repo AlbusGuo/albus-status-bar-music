@@ -386,6 +386,34 @@ export class PlaylistManager {
 	}
 
 	/**
+	 * 清空元数据缓存
+	 */
+	clearMetadataCache(): void {
+		this.metadataManager.cleanup();
+		
+		// 重新初始化空的缓存
+		this.metadataManager.initializeFromSettings({ 
+			metadata: {} 
+		} as PluginSettings);
+		
+		// 清空播放列表中的元数据
+		this.fullPlaylist.forEach(track => {
+			track.metadata = {
+				title: track.name,
+				artist: "未知艺术家",
+				album: "未知专辑",
+				cover: null
+			};
+		});
+		
+		// 更新视图
+		this.updateView();
+		this.emit("onPlaylistUpdate", this.viewPlaylist);
+		
+		console.log("PlaylistManager: Metadata cache cleared");
+	}
+
+	/**
 	 * 清理资源
 	 */
 	cleanup(): void {
