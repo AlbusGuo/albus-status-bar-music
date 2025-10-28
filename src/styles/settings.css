@@ -13,6 +13,24 @@
 	color: var(--text-accent);
 }
 
+/* 设置页面按钮光标样式 */
+.setting-item-control button {
+	cursor: pointer !important;
+}
+
+.setting-item-control button:hover {
+	cursor: pointer !important;
+}
+
+/* 清空缓存按钮特殊样式 */
+.setting-item-control button.mod-warning {
+	cursor: pointer !important;
+}
+
+.setting-item-control button.mod-warning:hover {
+	cursor: pointer !important;
+}
+
 /* 设置页面响应式布局 */
 @media (max-width: 768px) {
 	.setting-item {

@@ -1,0 +1,102 @@
+/* Status Bar Music Plugin - Vinyl Player Styles */
+
+.hub-vinyl-container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin-bottom: 16px;
+}
+
+.hub-progress-time-container {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	width: 100%;
+	max-width: 300px;
+}
+
+.hub-controls {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 16px;
+	padding: 16px;
+	background: var(--background-secondary);
+	border-radius: 8px;
+	margin: 8px;
+}
+
+/* 响应式设计 */
+@media (max-width: 600px) {
+	.hub-controls {
+		padding: 12px;
+		margin: 4px;
+	}
+	
+	.hub-vinyl-container {
+		margin-bottom: 12px;
+	}
+	
+	.hub-progress-time-container {
+		max-width: 250px;
+	}
+}
+
+/* 黑胶唱片播放器动画增强 */
+.vinyl-disc {
+	transition: box-shadow 0.3s ease;
+}
+
+.vinyl-disc:hover {
+	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+}
+
+/* 中心标签动画 */
+.vinyl-center-label {
+	transition: transform 0.3s ease;
+}
+
+.vinyl-disc:hover .vinyl-center-label {
+	transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* 封面图片加载动画 */
+.vinyl-cover {
+	transition: opacity 0.3s ease;
+}
+
+.vinyl-cover[style*="background-image"] {
+	opacity: 1;
+}
+
+.vinyl-cover:not([style*="background-image"]) {
+	opacity: 0.7;
+}
+
+/* 音轨纹路动画 */
+.vinyl-groove {
+	transition: border-color 0.3s ease;
+}
+
+.vinyl-disc:hover .vinyl-groove {
+	border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* 高光效果动画 */
+.vinyl-shine {
+	opacity: 0.6;
+	transition: opacity 0.3s ease;
+}
+
+.vinyl-disc:hover .vinyl-shine {
+	opacity: 0.8;
+}
+
+/* 黑胶唱片播放器整体布局优化 */
+.hub-vinyl-container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	margin-bottom: 16px;
+}
+

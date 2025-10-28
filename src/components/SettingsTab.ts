@@ -115,11 +115,8 @@ export class SettingsTab extends PluginSettingTab {
 			cls: "metadata-stats-container",
 		});
 
-		// 元数据统计
+		// 元数据统计（包含清空缓存按钮）
 		this.updateMetadataStats(this.metadataStatsContainer);
-
-		// 清空缓存按钮
-		this.displayClearCacheButton();
 		
 		// 延迟更新一次，确保元数据管理器已初始化
 		setTimeout(() => {
@@ -148,20 +145,10 @@ export class SettingsTab extends PluginSettingTab {
 			metadataCount = Object.keys(this.settings.metadata || {}).length;
 		}
 
+		// 创建包含统计信息和清空按钮的设置项
 		new Setting(container)
 			.setName("已缓存的元数据")
-			.setDesc(`当前缓存了 ${metadataCount} 个音频文件的元数据信息`);
-	}
-
-	
-
-	/**
-	 * 显示清空缓存按钮
-	 */
-	private displayClearCacheButton(): void {
-		new Setting(this.containerEl)
-			.setName("清空元数据缓存")
-			.setDesc("删除所有缓存的元数据，下次播放时将重新提取")
+			.setDesc(`当前缓存了 ${metadataCount} 个音频文件的元数据信息`)
 			.addButton((button) => {
 				button
 					.setButtonText("清空缓存")
@@ -203,10 +190,7 @@ export class SettingsTab extends PluginSettingTab {
 			
 			// 显示成功提示
 			new Notice("元数据缓存已清空");
-			
-			console.log("Metadata cache cleared successfully");
 		} catch (error) {
-			console.error("Failed to clear metadata cache:", error);
 			new Notice("清空缓存失败，请重试");
 		}
 	}

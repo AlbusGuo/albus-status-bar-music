@@ -2,6 +2,7 @@ import { setIcon } from "obsidian";
 import { MusicTrack, PlaybackMode } from "../types";
 import { CSS_CLASSES, ICONS, UI_CONSTANTS } from "../utils/constants";
 import { clamp, formatTime } from "../utils/helpers";
+import { VinylPlayer } from "./VinylPlayer";
 
 export class MusicHubComponent {
 	private containerEl: HTMLElement;
@@ -11,23 +12,31 @@ export class MusicHubComponent {
 	private categorySelect: HTMLSelectElement;
 	private modeButton: HTMLButtonElement;
 	private controlsEl: HTMLElement;
+	private leftVinylButton: HTMLButtonElement;
+	private rightVinylButton: HTMLButtonElement;
 	private progressContainer: HTMLElement;
 	private progressFill: HTMLElement;
 	private progressThumb: HTMLElement;
 	private timeDisplay: HTMLElement;
 	private playlistEl: HTMLUListElement;
+	private vinylPlayer: VinylPlayer;
 
 	private isDragging = false;
 	private isVisible = false;
+	private isHiding = false;
+	private hideTimeout: NodeJS.Timeout | null = null;
 
 	private events: {
 		onFavoriteToggle?: () => void;
 		onRefresh?: () => void;
 		onCategoryChange?: (category: string) => void;
 		onModeToggle?: () => void;
+		onPrevious?: () => void;
+		onNext?: () => void;
 		onSeek?: (percent: number) => void;
 		onTrackSelect?: (track: MusicTrack) => void;
 		onHide?: () => void;
+		onVinylPlayPause?: () => void;
 	} = {};
 
 	constructor() {
@@ -96,8 +105,47 @@ export class MusicHubComponent {
 			cls: "hub-controls",
 		});
 
+		// 唱片切换容器
+		const vinylSwitcherContainer = this.controlsEl.createEl("div", {
+			cls: "hub-vinyl-switcher",
+		});
+
+		// 左侧唱片按钮
+		this.leftVinylButton = vinylSwitcherContainer.createEl("button", {
+			cls: "hub-side-vinyl hub-left-vinyl",
+		});
+		this.leftVinylButton.innerHTML = `
+			<div class="hub-side-vinyl-disc">
+				<div class="hub-side-vinyl-cover"></div>
+			</div>
+		`;
+
+		// 中间黑胶唱片播放器容器
+		const vinylContainer = vinylSwitcherContainer.createEl("div", {
+			cls: "hub-vinyl-container",
+		});
+		this.vinylPlayer = new VinylPlayer(vinylContainer);
+		
+		// 右侧唱片按钮
+		this.rightVinylButton = vinylSwitcherContainer.createEl("button", {
+			cls: "hub-side-vinyl hub-right-vinyl",
+		});
+		this.rightVinylButton.innerHTML = `
+			<div class="hub-side-vinyl-disc">
+				<div class="hub-side-vinyl-cover"></div>
+			</div>
+		`;
+		
+		// 连接黑胶唱片播放器事件
+		this.connectVinylEvents();
+
+		// 进度和时间容器
+		const progressTimeContainer = this.controlsEl.createEl("div", {
+			cls: "hub-progress-time-container",
+		});
+
 		// 进度条容器
-		this.progressContainer = this.controlsEl.createEl("div", {
+		this.progressContainer = progressTimeContainer.createEl("div", {
 			cls: "hub-progress-container",
 		});
 
@@ -110,7 +158,7 @@ export class MusicHubComponent {
 		});
 
 		// 时间显示
-		this.timeDisplay = this.controlsEl.createEl("div", {
+		this.timeDisplay = progressTimeContainer.createEl("div", {
 			cls: "hub-time-display",
 			text: "--:-- / --:--",
 		});
@@ -135,6 +183,15 @@ export class MusicHubComponent {
 
 		this.modeButton.addEventListener("click", () => {
 			this.events.onModeToggle?.();
+		});
+
+		// 左右唱片按钮事件
+		this.leftVinylButton.addEventListener("click", () => {
+			this.events.onPrevious?.();
+		});
+
+		this.rightVinylButton.addEventListener("click", () => {
+			this.events.onNext?.();
 		});
 
 		// 进度条拖拽事件
@@ -233,20 +290,41 @@ export class MusicHubComponent {
 	 */
 	show(anchorElement: HTMLElement): void {
 		const buttonRect = anchorElement.getBoundingClientRect();
-		const hubWidth = UI_CONSTANTS.HUB_WIDTH;
+		const hubWidth = 380; // 与CSS中的容器宽度一致
 		const screenWidth = window.innerWidth;
+		const screenHeight = window.innerHeight;
 
+		// 先显示容器以获取实际高度
+		this.containerEl.show();
+		const hubHeight = this.containerEl.offsetHeight;
+
+		// 计算水平位置
 		let hubLeft = buttonRect.left;
 		if (hubLeft + hubWidth > screenWidth) {
 			hubLeft = buttonRect.right - hubWidth;
 		}
+		hubLeft = Math.max(10, hubLeft); // 确保不超出左边界，至少留10px边距
 
-		this.containerEl.style.bottom = `${
-			window.innerHeight - buttonRect.top
-		}px`;
-		this.containerEl.style.left = `${Math.max(0, hubLeft)}px`;
+		// 计算垂直位置 - 优先显示在按钮上方
+		let hubTop = buttonRect.top - hubHeight - 10; // 10px 间距
+		
+		// 如果上方空间不足，显示在下方
+		if (hubTop < 10) {
+			hubTop = buttonRect.bottom + 10;
+		}
 
-		this.containerEl.show();
+		// 确保不超出屏幕底部，留至少10px边距
+		if (hubTop + hubHeight > screenHeight - 10) {
+			hubTop = screenHeight - hubHeight - 10;
+		}
+
+		// 最终确保不超出顶部
+		hubTop = Math.max(10, hubTop);
+
+		this.containerEl.style.top = `${hubTop}px`;
+		this.containerEl.style.left = `${hubLeft}px`;
+		this.containerEl.style.bottom = 'auto'; // 取消bottom设置
+
 		this.isVisible = true;
 	}
 
@@ -254,18 +332,39 @@ export class MusicHubComponent {
 	 * 隐藏Hub
 	 */
 	hide(): void {
+		// 设置隐藏标志，防止立即重新打开
+		this.isHiding = true;
+		
+		// 清除之前的超时
+		if (this.hideTimeout) {
+			clearTimeout(this.hideTimeout);
+		}
+		
 		this.containerEl.hide();
 		this.isVisible = false;
 		this.events.onHide?.();
+		
+		// 200ms后清除隐藏标志
+		this.hideTimeout = setTimeout(() => {
+			this.isHiding = false;
+		}, 200);
 	}
 
 	/**
 	 * 切换显示状态
 	 */
 	toggle(anchorElement: HTMLElement): void {
+		// 如果正在隐藏过程中，忽略这次点击
+		if (this.isHiding) {
+			console.log('MusicHub: Ignoring toggle - currently hiding');
+			return;
+		}
+		
 		if (this.isVisible) {
+			console.log('MusicHub: Hiding music hub (currently visible)');
 			this.hide();
 		} else {
+			console.log('MusicHub: Showing music hub (currently hidden)');
 			this.show(anchorElement);
 		}
 	}
@@ -291,6 +390,75 @@ export class MusicHubComponent {
 			shuffle: ICONS.SHUFFLE,
 		};
 		setIcon(this.modeButton, iconMap[mode]);
+	}
+
+	/**
+	 * 更新当前播放曲目
+	 */
+	updateCurrentTrack(track: MusicTrack | null): void {
+		this.vinylPlayer.setTrack(track);
+		// 更新左右唱片的封面将在主插件中处理
+	}
+
+	/**
+	 * 更新播放状态
+	 */
+	updatePlayState(isPlaying: boolean): void {
+		this.vinylPlayer.setPlaying(isPlaying);
+	}
+
+	/**
+	 * 只更新当前播放状态，不重新渲染整个列表
+	 */
+	updateCurrentPlayingTrack(track: MusicTrack | null): void {
+		// 移除所有播放状态
+		this.playlistEl.querySelectorAll(`.${CSS_CLASSES.IS_PLAYING}`).forEach(item => {
+			item.removeClass(CSS_CLASSES.IS_PLAYING);
+		});
+
+		// 为当前播放项添加播放状态
+		if (track) {
+			const currentItem = this.playlistEl.querySelector(`[data-track-id="${track.id}"]`);
+			if (currentItem) {
+				currentItem.addClass(CSS_CLASSES.IS_PLAYING);
+			}
+		}
+	}
+
+	/**
+	 * 更新左右唱片按钮的封面
+	 */
+	updateSideVinyls(prevTrack: MusicTrack | null, nextTrack: MusicTrack | null): void {
+		// 更新左侧唱片（上一首）
+		this.updateSideVinyl(this.leftVinylButton, prevTrack);
+		
+		// 更新右侧唱片（下一首）
+		this.updateSideVinyl(this.rightVinylButton, nextTrack);
+	}
+
+	/**
+	 * 更新单个侧边唱片
+	 */
+	private updateSideVinyl(button: HTMLButtonElement, track: MusicTrack | null): void {
+		const coverEl = button.querySelector('.hub-side-vinyl-cover') as HTMLElement;
+		if (!coverEl) return;
+
+		if (track && track.metadata?.cover) {
+			coverEl.style.backgroundImage = `url(${track.metadata.cover})`;
+			coverEl.style.opacity = '1';
+		} else {
+			coverEl.style.backgroundImage = '';
+			coverEl.style.opacity = '0';
+		}
+	}
+
+	/**
+	 * 连接黑胶唱片播放器事件
+	 */
+	private connectVinylEvents(): void {
+		this.vinylPlayer.on("onPlayPause", () => {
+			this.events.onVinylPlayPause?.();
+		});
 	}
 
 	/**
@@ -344,9 +512,19 @@ export class MusicHubComponent {
 	 */
 	renderPlaylist(
 		tracks: MusicTrack[],
-		currentTrack: MusicTrack | null
+		currentTrack: MusicTrack | null,
+		isMetadataInitialized: boolean = true
 	): void {
 		this.playlistEl.empty();
+
+		// 如果元数据未初始化，显示加载状态
+		if (!isMetadataInitialized) {
+			this.playlistEl.createEl("li", {
+				text: "正在加载音乐库...",
+				cls: "playlist-loading",
+			});
+			return;
+		}
 
 		if (tracks.length === 0) {
 			this.playlistEl.createEl("li", {
@@ -360,6 +538,9 @@ export class MusicHubComponent {
 			const li = this.playlistEl.createEl("li", {
 				cls: "playlist-item",
 			});
+			
+			// 添加track ID用于后续状态更新
+			li.setAttribute("data-track-id", track.id.toString());
 
 			if (currentTrack && track.id === currentTrack.id) {
 				li.addClass(CSS_CLASSES.IS_PLAYING);
@@ -406,11 +587,8 @@ export class MusicHubComponent {
 						coverImg.style.opacity = "1";
 					};
 					
-					coverImg.onerror = (e) => {
-						console.warn(
-							`Failed to load cover image for: ${track.name}`,
-							e
-						);
+					coverImg.onerror = () => {
+						// 封面图片加载失败，使用默认图标
 						coverContainer.empty();
 						setIcon(coverContainer, ICONS.MUSIC);
 					};
@@ -492,15 +670,24 @@ export class MusicHubComponent {
 		return this.isVisible;
 	}
 
-	/**
-	 * 清理
+/**
+	 * 清理资源
 	 */
 	cleanup(): void {
+		// 清理隐藏超时
+		if (this.hideTimeout) {
+			clearTimeout(this.hideTimeout);
+		}
+		
 		document.removeEventListener("click", this.handleDocumentClick, {
 			capture: true,
 		});
 		document.removeEventListener("mousemove", this.handleDragMove);
 		document.removeEventListener("mouseup", this.handleDragEnd);
+
+		if (this.vinylPlayer) {
+			this.vinylPlayer.cleanup();
+		}
 
 		this.containerEl.remove();
 		this.events = {};

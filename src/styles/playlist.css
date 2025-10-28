@@ -120,3 +120,29 @@
 .hub-playlist::-webkit-scrollbar-thumb:hover {
 	background: var(--text-normal);
 }
+
+.playlist-loading {
+	text-align: center;
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+
+.playlist-loading::before {
+	content: "⏳";
+	font-size: 16px;
+	animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+	0%, 100% {
+		opacity: 0.4;
+	}
+	50% {
+		opacity: 1;
+	}
+}

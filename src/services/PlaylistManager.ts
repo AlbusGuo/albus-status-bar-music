@@ -50,9 +50,11 @@ export class PlaylistManager {
 				}
 			});
 			
-			// 更新视图播放列表
-			this.updateView();
-			this.emit("onPlaylistUpdate", this.viewPlaylist);
+			// 只有在元数据管理器完全初始化后才更新UI
+			if (this.metadataManager.isFullyInitialized()) {
+				this.updateView();
+				this.emit("onPlaylistUpdate", this.viewPlaylist);
+			}
 		}
 	}
 
@@ -127,7 +129,7 @@ export class PlaylistManager {
 			}
 		}
 
-		console.log(`Processed ${processed} files, found ${collectedFiles.size} music files`);
+		// 文件处理完成
 
 		// 创建播放列表项
 		const fileArray = Array.from(collectedFiles.values());
@@ -159,7 +161,7 @@ export class PlaylistManager {
 	 * 刷新元数据
 	 */
 	async refreshMetadata(): Promise<void> {
-		console.log("PlaylistManager: Starting metadata refresh via MetadataManager");
+		// 开始元数据刷新
 		
 		const currentSettings = this.settingsRef();
 		const validFolders = currentSettings.musicFolderPaths.filter(
@@ -167,7 +169,7 @@ export class PlaylistManager {
 		);
 		
 		if (validFolders.length === 0) {
-			console.warn("PlaylistManager: No valid music folders found");
+			// 无有效音乐文件夹
 			this.emit("onPlaylistUpdate", []);
 			return;
 		}
@@ -179,7 +181,7 @@ export class PlaylistManager {
 		const metadataExport = this.metadataManager.exportToSettings();
 		currentSettings.metadata = metadataExport.metadata;
 		
-		console.log("PlaylistManager: Metadata refresh completed");
+		// 元数据刷新完成
 	}
 
 	/**
@@ -410,7 +412,7 @@ export class PlaylistManager {
 		this.updateView();
 		this.emit("onPlaylistUpdate", this.viewPlaylist);
 		
-		console.log("PlaylistManager: Metadata cache cleared");
+		// 元数据缓存已清理
 	}
 
 	/**

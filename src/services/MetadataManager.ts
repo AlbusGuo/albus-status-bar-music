@@ -16,6 +16,9 @@ export class MetadataManager {
 	private onMetadataUpdate?: (metadata: Map<string, TrackMetadata>) => void;
 	private coverLoadingQueue: Set<string> = new Set();
 	private coverLoadingTimeout: NodeJS.Timeout | null = null;
+	private isInitialized: boolean = false;
+	private totalTracks: number = 0;
+	private processedTracks: number = 0;
 
 	constructor(app: App) {
 		this.app = app;
@@ -30,14 +33,36 @@ export class MetadataManager {
 	}
 
 	/**
+	 * 检查是否已完全初始化
+	 */
+	isFullyInitialized(): boolean {
+		return this.isInitialized;
+	}
+
+	/**
+	 * 获取初始化进度
+	 */
+	getInitializationProgress(): { current: number; total: number; percentage: number } {
+		return {
+			current: this.processedTracks,
+			total: this.totalTracks,
+			percentage: this.totalTracks > 0 ? (this.processedTracks / this.totalTracks) * 100 : 100
+		};
+	}
+
+	/**
 	 * 从设置中初始化缓存（轻量级初始化）
 	 */
-	initializeFromSettings(settings: PluginSettings): void {
+initializeFromSettings(settings: PluginSettings): void {
 		this.cache.clear();
+		this.isInitialized = false;
+		this.processedTracks = 0;
 		
 		if (settings.metadata) {
+			this.totalTracks = Object.keys(settings.metadata).length;
+			
 			Object.entries(settings.metadata).forEach(([path, metadata]) => {
-				// 轻量级初始化：只保存基本信息，封面延迟加载
+				// 轻量级初始化：只保存基本信息，封面延迟加载，避免阻塞启动
 				const lightMetadata: TrackMetadata = {
 					title: metadata.title,
 					artist: metadata.artist,
@@ -45,10 +70,16 @@ export class MetadataManager {
 					cover: null // 封面延迟加载，避免阻塞启动
 				};
 				this.cache.set(path, lightMetadata);
+				this.processedTracks++;
 			});
+		} else {
+			this.totalTracks = 0;
 		}
 		
-		console.log(`MetadataManager initialized with ${this.cache.size} cached entries (covers delayed)`);
+		// 标记为已初始化
+		this.isInitialized = true;
+		
+		// 元数据管理器初始化完成
 		this.notifyUpdate();
 	}
 
@@ -69,11 +100,11 @@ export class MetadataManager {
 	 * 扫描并提取所有音乐文件的元数据
 	 */
 	async refreshAllMetadata(musicFolderPaths: string[]): Promise<void> {
-		console.log("MetadataManager: Starting full metadata refresh");
+		// 开始完整元数据刷新
 		
 		const validFolders = musicFolderPaths.filter(p => p && p.trim() !== "");
 		if (validFolders.length === 0) {
-			console.warn("MetadataManager: No valid music folders");
+			// 无有效音乐文件夹
 			return;
 		}
 
@@ -94,7 +125,7 @@ export class MetadataManager {
 			});
 		});
 
-		console.log(`MetadataManager: Found ${musicFiles.length} music files`);
+		// 发现音乐文件
 
 		// 处理每个文件
 		let processedCount = 0;
@@ -122,7 +153,7 @@ export class MetadataManager {
 			}
 		}
 
-		console.log(`MetadataManager: Processed ${processedCount} files, cache size: ${this.cache.size}`);
+		// 文件处理完成
 		this.notifyUpdate();
 		this.scheduleSave();
 	}
@@ -276,7 +307,7 @@ export class MetadataManager {
 
 		this.saveTimeout = setTimeout(() => {
 			this.isDirty = false;
-			console.log("MetadataManager: Ready to save");
+			// 准备保存
 		}, 1000);
 	}
 

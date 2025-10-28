@@ -33,6 +33,9 @@ export const UI_CONSTANTS = {
 export const CSS_CLASSES = {
 	STATUSBAR: "albus-status-bar-music-statusbar",
 	BUTTON: "albus-status-bar-music-button",
+	VINYL_BUTTON: "albus-status-bar-music-vinyl-button",
+	VINYL_DISC: "albus-status-bar-music-vinyl-disc",
+	VINYL_CENTER: "albus-status-bar-music-vinyl-center",
 	TRACK_BUTTON: "albus-status-bar-music-track-button",
 	PROGRESS: "albus-status-bar-progress",
 	HUB_CONTAINER: "albus-status-bar-music-hub-container",

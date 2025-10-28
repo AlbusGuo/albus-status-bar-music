@@ -1,94 +1,218 @@
-# Obsidian Sample Plugin
+# 🎵 Albus Status Bar Music
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+> 为 Obsidian 打造的优雅音乐播放器，在状态栏享受音乐之美
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Obsidian](https://img.shields.io/badge/obsidian-v1.0+-purple.svg)](https://obsidian.md)
+[![TypeScript](https://img.shields.io/badge/typescript-4.9+-blue.svg)](https://www.typescriptlang.org/)
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+## ✨ 特性
 
-## First time developing plugins?
+### 🎨 **精美黑胶唱片界面**
+- **逼真黑胶唱片**：精心设计的旋转动画，模拟真实唱片机体验
+- **光泽效果**：多层渐变和高光，呈现专业级视觉效果
+- **流畅动画**：CSS3 驱动的不间断旋转，暂停时保持当前位置
+- **交互设计**：点击唱片即可播放/暂停，简洁直观
 
-Quick starting guide for new plugin devs:
+### 🎵 **强大音乐管理**
+- **智能扫描**：自动发现指定文件夹中的音频文件
+- **元数据缓存**：高效的音乐信息提取和缓存系统
+- **封面显示**：自动加载专辑封面，缺失时显示优雅占位符
+- **分类浏览**：按文件夹组织音乐，快速定位心仪曲目
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+### 🎛️ **完整播放控制**
+- **状态栏集成**：实时显示当前播放状态和进度
+- **播放控制**：播放/暂停、上一曲、下一曲
+- **进度控制**：可拖拽的进度条，精确定位播放位置
+- **播放模式**：支持单曲循环、列表循环等模式
 
-## Releasing new releases
+### ⚡ **性能优化**
+- **异步加载**：不阻塞 Obsidian 启动，后台加载音乐库
+- **内存管理**：智能缓存策略，平衡性能与内存使用
+- **响应式设计**：适配不同屏幕尺寸，移动端友好
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+## 📸 界面预览
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+### 🎼 黑胶唱片播放器
+精美的黑胶唱片设计，配合逼真的旋转动画和光泽效果：
 
-## Adding your plugin to the community plugin list
-
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
-
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint ./src/`
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+```
+🎵 [正在播放的音乐标题]
+       📀 旋转的黑胶唱片
+       ⏸ 暂停/播放控制
 ```
 
-If you have multiple URLs, you can also do:
+### 📱 状态栏显示
+简洁的状态栏集成，实时显示播放信息：
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
+```
+🎵 Song Title - Artist 00:00 / 03:45 ▶
 ```
 
-## API Documentation
+### 🎛️ 音乐控制面板
+优雅的弹出式控制界面，包含完整的播放控制功能：
 
-See https://github.com/obsidianmd/obsidian-api
+```
+┌─────────────────────────┐
+│  🎵 Albus Status Bar Music │
+├─────────────────────────┤
+│  📀 [黑胶唱片]          │
+│  🎵 Song Title          │
+│  🎤 Artist - Album      │
+│  ⏸━━━━━━━━━━━━━━━━━━━━━▶ │
+│  00:00              03:45 │
+│  📁 [文件夹选择] [模式]   │
+│  📜 [播放列表]           │
+└─────────────────────────┘
+```
+
+## 🚀 快速开始
+
+### 📦 安装
+
+1. **下载插件文件**
+   ```bash
+   git clone https://github.com/your-username/albus-status-bar-music.git
+   ```
+
+2. **构建插件**
+   ```bash
+   cd albus-status-bar-music
+   npm install
+   npm run build
+   ```
+
+3. **安装到 Obsidian**
+   - 复制 `main.js`、`manifest.json`、`styles.css` 到
+   `<vault>/.obsidian/plugins/albus-status-bar-music/`
+
+4. **启用插件**
+   - 在 Obsidian 设置中启用 "Albus Status Bar Music"
+
+### ⚙️ 基础配置
+
+1. **设置音乐文件夹**
+   - 打开插件设置页面
+   - 添加包含音乐文件的文件夹路径
+   - 支持多个文件夹
+
+2. **支持的音频格式**
+   - MP3, FLAC, WAV, M4A, OGG
+   - 自动识别文件扩展名
+
+3. **开始使用**
+   - 点击状态栏的音乐图标打开控制面板
+   - 点击黑胶唱片开始播放
+   - 享受音乐！
+
+## 🎯 使用指南
+
+### 🎼 播放控制
+
+| 操作 | 方式 |
+|------|------|
+| 播放/暂停 | 点击黑胶唱片或状态栏 |
+| 上一曲/下一曲 | 使用控制按钮 |
+| 进度控制 | 拖拽进度条 |
+| 音量控制 | 系统音量控制 |
+
+### 📁 音乐管理
+
+| 功能 | 说明 |
+|------|------|
+| 文件夹扫描 | 自动扫描指定文件夹 |
+| 元数据缓存 | 提取并缓存音乐信息 |
+| 封面显示 | 自动加载专辑封面 |
+| 分类浏览 | 按文件夹组织音乐 |
+
+### ⚙️ 高级设置
+
+| 设置项 | 说明 |
+|------|------|
+| 音乐文件夹 | 设置音乐文件存储位置 |
+| 播放模式 | 单曲循环、列表循环等 |
+| 缓存管理 | 清理元数据缓存 |
+| 界面主题 | 适配 Obsidian 主题 |
+
+## 🔧 技术架构
+
+### 📁 项目结构
+```
+albus-status-bar-music/
+├── src/
+│   ├── components/          # UI 组件
+│   │   ├── MusicHubComponent.ts
+│   │   ├── VinylPlayer.ts
+│   │   ├── StatusBarComponent.ts
+│   │   └── SettingsTab.ts
+│   ├── services/           # 核心服务
+│   │   ├── AudioPlayerService.ts
+│   │   ├── PlaylistManager.ts
+│   │   ├── MetadataManager.ts
+│   │   └── MetadataParser.ts
+│   ├── styles/             # 样式文件
+│   │   ├── hub.css
+│   │   ├── vinyl.css
+│   │   └── statusbar.css
+│   ├── types/              # 类型定义
+│   ├── utils/              # 工具函数
+│   └── main.ts             # 插件入口
+├── manifest.json           # 插件清单
+├── package.json            # 依赖配置
+└── README.md              # 项目文档
+```
+
+### 🛠️ 技术栈
+
+- **TypeScript** - 类型安全的 JavaScript
+- **Obsidian API** - 插件开发接口
+- **CSS3** - 现代样式和动画
+- **esbuild** - 快速构建工具
+- **music-metadata** - 音频元数据提取
+
+### 🎨 设计理念
+
+- **极简主义**：专注核心功能，避免界面冗余
+- **用户友好**：直观的交互设计，降低学习成本
+- **性能优先**：异步处理，不影响 Obsidian 性能
+- **视觉美感**：精美的黑胶唱片设计，提升使用体验
+
+## 🤝 贡献指南
+
+欢迎为项目贡献代码！
+
+### 🐛 报告问题
+- 使用 GitHub Issues 报告 bug
+- 提供详细的复现步骤
+- 包含系统环境信息
+
+### 💡 功能建议
+- 在 Issues 中提出功能建议
+- 描述使用场景和预期效果
+- 欢迎提供设计思路
+
+### 🔧 代码贡献
+1. Fork 项目仓库
+2. 创建功能分支
+3. 提交代码变更
+4. 发起 Pull Request
+
+## 📄 许可证
+
+本项目采用 [MIT 许可证](LICENSE)。
+
+## 🙏 致谢
+
+- **Obsidian 团队** - 提供强大的笔记平台
+- **开源社区** - 提供丰富的技术资源
+- **音乐爱好者** - 提供宝贵的使用反馈
+
+---
+
+<div align="center">
+
+**🎵 让音乐伴随你的每一个创作瞬间**
+
+Made with ❤️ by [Your Name]
+
+</div>
