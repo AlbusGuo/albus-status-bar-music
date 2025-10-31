@@ -3,12 +3,8 @@
 > 在 Obsidian 状态栏享受音乐，让知识创作与美妙旋律相伴
 
 ![ObsidianPlugin](https://img.shields.io/badge/Obsidian-Plugin-red?logo=obsidian)
-
 ![Version](https://img.shields.io/badge/Version-0.0.4-blue)
-
 ![License](https://img.shields.io/badge/License-MIT-green)
-
-
 ![release](https://img.shields.io/github/downloads/AlbusGuo/albus-status-bar-music/total?style=flat&label=Total%20Downloads)
 
 ## 🌟 为什么选择 Albus Status Bar Music？
