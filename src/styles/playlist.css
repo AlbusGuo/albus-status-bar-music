@@ -4,7 +4,7 @@
 	list-style: none;
 	margin: 0;
 	padding: 0;
-	max-height: 300px;
+	max-height: 250px;
 	overflow-y: auto;
 }
 
@@ -24,6 +24,7 @@
 	color: var(--text-accent);
 	font-weight: 600;
 	background-color: var(--background-modifier-hover);
+	border-left: 6px solid var(--interactive-accent);
 }
 
 .playlist-item-content {
@@ -89,7 +90,7 @@
 
 .playlist-item-album {
 	font-size: 10px;
-	color: var(--text-faint);
+	color: var(--text-muted);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -146,3 +147,16 @@
 		opacity: 1;
 	}
 }
+
+.playlist-empty {
+	text-align: center;
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+}
+
+

@@ -19,10 +19,11 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 	async onload() {
 		try {
-			// 加载设置
-			await this.loadSettings();
-
-			// 初始化服务
+// 加载设置
+		await this.loadSettings();
+		
+		// 迁移旧设置到新设置格式
+		this.migrateSettings();			// 初始化服务
 			this.initializeServices();
 
 			// 创建UI组件
@@ -40,17 +41,33 @@ export default class StatusBarMusicPlugin extends Plugin {
 			// 添加设置页面
 			this.addSettingTab(this.settingsTab);
 
-			// 异步加载播放列表
-			setTimeout(async () => {
-				try {
+// 异步加载播放列表并刷新元数据
+		setTimeout(async () => {
+			try {
+				// 首先初始化元数据管理器（从data.json加载已有数据）
+				const currentSettings = this.settings;
+				this.playlistManager.initializeMetadata(currentSettings);
+				
+				// 创建状态栏（无论是否有音乐文件都要创建）
+				this.createStatusBar();
+				
+				// 检查是否有音乐文件夹路径
+				if (currentSettings.musicFolderPath && currentSettings.musicFolderPath.trim() !== "") {
+					// 有音乐文件夹路径，加载播放列表
 					await this.playlistManager.loadFullPlaylist();
-					this.createStatusBar();
-				} catch (error) {
-					console.error('StatusBarMusicPlugin: Failed to load playlist', error);
+					
+					// 刷新元数据（重新扫描文件，解决blob URL失效）
+					await this.playlistManager.refreshMetadata();
+					await this.saveSettings();
+					
+					console.log('StatusBarMusicPlugin: Music library loaded successfully');
+				} else {
+					console.log('StatusBarMusicPlugin: No music folder set, waiting for user configuration');
 				}
-			}, 100);
-
-
+			} catch (error) {
+				console.error('StatusBarMusicPlugin: Failed to load playlist or refresh metadata', error);
+			}
+		}, 100);
 		} catch (error) {
 			// 静默处理错误，避免干扰用户体验
 		}
@@ -63,6 +80,14 @@ export default class StatusBarMusicPlugin extends Plugin {
 		this.playlistManager = new PlaylistManager(this.app, this.settings, () => this.settings);
 		this.audioPlayer = new AudioPlayerService();
 
+		// 设置元数据管理器的保存回调
+		const metadataManager = (this.playlistManager as any).metadataManager;
+		if (metadataManager) {
+			metadataManager.setSaveCallback(() => {
+				this.saveSettings();
+			});
+		}
+
 		this.settingsTab = new SettingsTab(
 			this.app,
 			this,
@@ -70,6 +95,8 @@ export default class StatusBarMusicPlugin extends Plugin {
 			() => this.saveSettings()
 		);
 	}
+
+	
 
 	/**
 	 * 注册命令
@@ -190,6 +217,24 @@ export default class StatusBarMusicPlugin extends Plugin {
 			this.playlistManager.setCategory(category);
 		});
 
+		this.musicHub.on("onSearch", (query: string) => {
+			this.playlistManager.setSearchQuery(query);
+		});
+
+		
+
+		this.musicHub.on("onCategoryChange", (category: string) => {
+			this.playlistManager.setCategory(category as any);
+		});
+
+		this.musicHub.on("onGetCategories", () => {
+			return this.playlistManager.getCategories();
+		});
+
+		this.musicHub.on("onGetCurrentCategory", () => {
+			return this.playlistManager.getCurrentCategory();
+		});
+
 		this.musicHub.on("onModeToggle", () => {
 			this.togglePlaybackMode();
 		});
@@ -232,7 +277,6 @@ export default class StatusBarMusicPlugin extends Plugin {
 		});
 
 		this.playlistManager.on("onPlaylistUpdate", () => {
-			this.updateCategorySelector();
 			this.updatePlaylist();
 			this.updateHubSideVinyls();
 		});
@@ -419,14 +463,6 @@ export default class StatusBarMusicPlugin extends Plugin {
 	}
 
 	/**
-	 * 更新分类选择器
-	 */
-	private updateCategorySelector(): void {
-		const categories = this.playlistManager.getCategories();
-		this.musicHub.updateCategorySelector(categories);
-	}
-
-	/**
 	 * 更新播放列表显示（带防抖）
 	 */
 	private updatePlaylist(): void {
@@ -501,6 +537,13 @@ export default class StatusBarMusicPlugin extends Plugin {
 	}
 
 	/**
+	 * 获取元数据管理器（供设置页面使用）
+	 */
+	get metadataManager() {
+		return (this.playlistManager as any).metadataManager;
+	}
+
+	/**
 	 * 卸载插件
 	 */
 	onunload(): void {
@@ -527,7 +570,19 @@ export default class StatusBarMusicPlugin extends Plugin {
 		if (this.musicHub) {
 			this.musicHub.cleanup();
 		}
+	}
 
-
+	/**
+	 * 迁移旧设置到新设置格式
+	 */
+	private migrateSettings(): void {
+		// 兼容旧版本设置：如果有多个音乐文件夹，使用第一个作为主文件夹
+		if ((this.settings as any).musicFolderPaths && Array.isArray((this.settings as any).musicFolderPaths)) {
+			const oldPaths = (this.settings as any).musicFolderPaths as string[];
+			if (oldPaths.length > 0 && !this.settings.musicFolderPath) {
+				this.settings.musicFolderPath = oldPaths[0];
+				this.saveSettings();
+			}
+		}
 	}
 }

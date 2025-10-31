@@ -1,7 +1,7 @@
 /* Status Bar Music Plugin - Music Hub Styles */
 
 .albus-status-bar-music-hub-container {
-	position: fixed;
+	position: absolute;
 	z-index: 999;
 	width: 380px;
 	background-color: var(--background-secondary);
@@ -10,9 +10,197 @@
 	padding: 12px;
 	display: flex;
 	flex-direction: column;
-	gap: 12px;
+	gap: 15px;
 	transform-origin: center;
 	transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+	overflow: hidden;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+/* 背景封面层 */
+.albus-status-bar-music-hub-container::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-size: cover;
+	background-position: center;
+	background-repeat: no-repeat;
+	background-image: var(--background-cover, none);
+	filter: blur(20px) brightness(0.4);
+	z-index: -1;
+	opacity: 0;
+	transition: opacity 0.5s ease;
+}
+
+.albus-status-bar-music-hub-container.has-background::before {
+	opacity: 1;
+}
+
+/* 内容容器 - 确保内容在背景之上 */
+.albus-status-bar-music-hub-container > * {
+	position: relative;
+	z-index: 1;
+}
+
+/* 半透明背景层 */
+.albus-status-bar-music-hub-container.has-background {
+	background-color: rgba(0, 0, 0, 0.6);
+	backdrop-filter: blur(10px);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* 无封面时的灰色蒙版背景 */
+.albus-status-bar-music-hub-container.has-background.no-cover {
+	background: linear-gradient(135deg, 
+		rgba(128, 128, 128, 0.4) 0%, 
+		rgba(96, 96, 96, 0.3) 50%, 
+		rgba(64, 64, 64, 0.4) 100%);
+	backdrop-filter: blur(20px) brightness(0.8);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.albus-status-bar-music-hub-container.has-background.no-cover::before {
+	background: linear-gradient(135deg, 
+		#4a5568 0%, 
+		#2d3748 50%, 
+		#1a202c 100%);
+	opacity: 0.6;
+	filter: blur(30px) brightness(0.6);
+	animation: subtle-gradient-shift 8s ease-in-out infinite;
+}
+
+/* 动态渐变动画 */
+@keyframes subtle-gradient-shift {
+	0%, 100% {
+		background: linear-gradient(135deg, 
+			#4a5568 0%, 
+			#2d3748 50%, 
+			#1a202c 100%);
+	}
+	50% {
+		background: linear-gradient(135deg, 
+			#2d3748 0%, 
+			#4a5568 50%, 
+			#2d3748 100%);
+	}
+}
+
+/* 优化文字在背景上的可读性 */
+.albus-status-bar-music-hub-container.has-background .hub-time-display,
+.albus-status-bar-music-hub-container.has-background .playlist-item-artist,
+.albus-status-bar-music-hub-container.has-background .playlist-item-album,
+.albus-status-bar-music-hub-container.has-background .playlist-empty,
+.albus-status-bar-music-hub-container.has-background .playlist-loading {
+	color: rgba(255, 255, 255, 0.8);
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 空列表和加载状态在无封面背景下的特殊样式 */
+.albus-status-bar-music-hub-container.has-background.no-cover .playlist-empty,
+.albus-status-bar-music-hub-container.has-background.no-cover .playlist-loading {
+	color: rgba(255, 255, 255, 0.9);
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+	font-weight: 500;
+}
+
+.albus-status-bar-music-hub-container.has-background.no-cover .playlist-empty::before,
+.albus-status-bar-music-hub-container.has-background.no-cover .playlist-loading::before {
+	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+}
+
+.albus-status-bar-music-hub-container.has-background .playlist-item-name {
+	color: rgba(255, 255, 255, 0.95);
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 增强按钮在背景上的对比度 */
+.albus-status-bar-music-hub-container.has-background .hub-function-button {
+	background-color: rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(5px);
+}
+
+.albus-status-bar-music-hub-container.has-background .hub-function-button:hover {
+	background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 背景模式下刷新按钮的特殊样式 */
+.albus-status-bar-music-hub-container.has-background .hub-refresh-button {
+	background-color: rgba(255, 255, 255, 0.15);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.albus-status-bar-music-hub-container.has-background .hub-refresh-button:hover {
+	background-color: rgba(255, 255, 255, 0.25);
+	border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 背景模式下控制按钮样式 */
+.albus-status-bar-music-hub-container.has-background .hub-control-button {
+	background-color: rgba(255, 255, 255, 0.05);
+}
+
+.albus-status-bar-music-hub-container.has-background .hub-control-button:hover {
+	background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* 无封面背景模式下的特殊样式 */
+.albus-status-bar-music-hub-container.has-background.no-cover .hub-control-button {
+	background-color: rgba(255, 255, 255, 0.08);
+}
+
+.albus-status-bar-music-hub-container.has-background.no-cover .hub-control-button:hover {
+	background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 搜索框和选择器样式优化 */
+.albus-status-bar-music-hub-container.has-background .hub-search-input,
+.albus-status-bar-music-hub-container.has-background .hub-function-select {
+	background-color: rgba(255, 255, 255, 0.1);
+	backdrop-filter: blur(5px);
+	border-color: rgba(255, 255, 255, 0.2);
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.albus-status-bar-music-hub-container.has-background .hub-search-input:focus {
+	border-color: rgba(255, 255, 255, 0.4);
+}
+
+.albus-status-bar-music-hub-container.has-background .hub-search-input::placeholder {
+	color: rgba(255, 255, 255, 0.6);
+}
+
+/* 选择器下拉选项样式 */
+.albus-status-bar-music-hub-container.has-background .hub-function-select option {
+	background-color: rgba(0, 0, 0, 0.8);
+	color: rgba(255, 255, 255, 0.9);
+	backdrop-filter: blur(10px);
+}
+
+/* 无封面背景模式下的选择器选项特殊样式 */
+.albus-status-bar-music-hub-container.has-background.no-cover .hub-function-select option {
+	background-color: rgba(64, 64, 64, 0.9);
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* 选择器选项悬停效果 */
+.albus-status-bar-music-hub-container.has-background .hub-function-select option:hover,
+.albus-status-bar-music-hub-container.has-background.no-cover .hub-function-select option:hover {
+	background-color: rgba(255, 255, 255, 0.2);
+	color: rgba(255, 255, 255, 1);
+}
+
+/* 选择器选中选项样式 */
+.albus-status-bar-music-hub-container.has-background .hub-function-select option:checked,
+.albus-status-bar-music-hub-container.has-background.no-cover .hub-function-select option:checked {
+	background-color: var(--interactive-accent);
+	color: white;
+	font-weight: 500;
 }
 
 .albus-status-bar-music-hub-container:not([style*="display: none"]) {
@@ -32,12 +220,31 @@
 
 .albus-status-bar-music-hub-container.is-dragging {
 	cursor: grabbing;
+	opacity: 0.9;
+	transform: scale(1.02);
+	box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* 拖拽手柄样式 */
+.albus-status-bar-music-hub-container .hub-drag-handle {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 20px;
+	cursor: grab;
+	background: transparent;
+	z-index: 10;
+}
+
+.albus-status-bar-music-hub-container.is-dragging .hub-drag-handle {
+	cursor: grabbing;
 }
 
 /* 功能按钮栏 */
 .hub-function-bar {
 	display: grid;
-	grid-template-columns: auto auto 1fr auto;
+	grid-template-columns: auto 1fr auto;
 	align-items: center;
 	gap: 8px;
 }
@@ -55,6 +262,15 @@
 	color: var(--icon-color) !important;
 }
 
+/* 刷新按钮特殊样式 - 固定小尺寸 */
+.hub-refresh-button {
+	width: 32px;
+	height: 32px;
+	min-width: 32px;
+	min-height: 32px;
+	flex-shrink: 0;
+}
+
 .hub-function-button:hover {
 	background-color: var(--background-modifier-hover);
 }
@@ -64,36 +280,64 @@
 }
 
 .hub-function-button.is-loading {
-	animation: spin 1s linear infinite;
+	/* 移除旋转动画 */
+	opacity: 0.7;
 }
 
 .hub-function-button .svg-icon {
 	width: 20px;
 	height: 20px;
-	color: var(--icon-color);
+	color: var(--text-on-accent);
+}
+
+/* 刷新按钮图标特殊尺寸 */
+.hub-refresh-button .svg-icon {
+	width: 18px;
+	height: 18px;
 }
 
 .hub-function-button.is-favorite .svg-icon {
-	color: var(--icon-color);
-	fill: var(--icon-color);
+	color: var(--text-on-accent);
+	fill: var(--text-on-accent);
 }
 
-.hub-function-select {
+/* 搜索框样式 */
+.hub-search-input {
 	flex-grow: 1;
 	background: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 5px;
 	font-size: 12px;
 	padding: 5px 8px;
+	outline: none;
+	transition: border-color 0.2s ease;
+}
+
+.hub-search-input:focus {
+	border-color: var(--interactive-accent);
+}
+
+.hub-search-input::placeholder {
+	color: var(--text-muted);
+	opacity: 0.7;
+}
+
+.hub-function-select {
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 5px;
+	font-size: 12px;
+	padding: 5px 8px;
+	min-width: 80px;
 }
 
 /* 交互式进度条 */
 .hub-controls {
 	display: flex;
 	flex-direction: column;
-	gap: 5px;
-	background: transparent;
-	padding: 0;
+	gap: 8px;
+	background: transparent !important;
+	margin-top: 20px !important;
 	margin: 0;
 }
 
@@ -154,6 +398,70 @@
 	font-size: 11px;
 	color: var(--text-muted);
 	text-align: center;
+	flex: 1;
+}
+
+/* 时间显示和控制按钮容器 - 同一行 */
+.hub-time-control-container {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	margin-top: 5px;
+}
+
+/* 播放模式和爱心按钮样式 */
+.hub-control-button {
+	background-color: transparent !important;
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 4px;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: transform 0.1s ease;
+	color: var(--text-on-accent) !important;
+	box-shadow: none !important;
+}
+
+.hub-control-button:hover {
+	transform: scale(1.1);
+}
+
+.hub-control-button:active {
+	transform: scale(0.95);
+}
+
+.hub-control-button .svg-icon {
+	width: 18px;
+	height: 18px;
+	color: inherit;
+}
+
+/* 播放列表切换按钮样式 */
+.hub-playlist-toggle .svg-icon {
+	width: 18px;
+	height: 18px;
+	color: var(--text-on-accent) !important;
+}
+
+/* 爱心按钮特殊样式 */
+.hub-favorite-button .svg-icon {
+	color: #ff4757 !important;
+	fill: #ff4757 !important;
+}
+
+.hub-favorite-button:not(.is-favorite) .svg-icon {
+	color: var(--text-on-accent) !important;
+	fill: none !important;
+}
+
+.hub-favorite-button.is-favorite .svg-icon {
+	color: #ff4757 !important;
+	fill: #ff4757 !important;
 }
 
 /* 唱片切换容器 */
@@ -162,9 +470,9 @@
 	align-items: center;
 	justify-content: center;
 	gap: 20px;
-	padding: 8px 0;
+	padding: 12px 0;
 	position: relative;
-	height: 100px;
+	height: 110px;
 }
 
 /* 侧边唱片按钮 - 真正的黑胶唱片样式 */
@@ -282,4 +590,56 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
+}
+
+/* 歌单选择器样式 */
+.playlist-selector-container {
+	position: absolute;
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 6px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	min-width: 150px;
+	max-height: 300px;
+	overflow-y: auto;
+	z-index: 1000;
+}
+
+.playlist-selector-title {
+	padding: 8px 12px;
+	font-weight: 600;
+	font-size: 12px;
+	color: var(--text-muted);
+	border-bottom: 1px solid var(--background-modifier-border);
+	background-color: var(--background-secondary);
+}
+
+.playlist-selector-list {
+	padding: 4px 0;
+}
+
+.playlist-selector-item {
+	padding: 8px 12px;
+	cursor: pointer;
+	font-size: 13px;
+	color: var(--text-normal);
+	transition: background-color 0.15s ease, color 0.15s ease;
+	border-radius: 4px;
+	margin: 2px 4px;
+}
+
+.playlist-selector-item:hover,
+.playlist-selector-item.is-hovered {
+	background-color: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.playlist-selector-item.is-active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-weight: 500;
+}
+
+.playlist-selector-item.is-active:hover {
+	background-color: var(--interactive-accent-hover);
 }

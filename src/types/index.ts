@@ -14,7 +14,7 @@ export interface TrackMetadata {
 }
 
 export interface PluginSettings {
-	musicFolderPaths: string[];
+	musicFolderPath: string;
 	favorites: string[];
 	playbackMode: PlaybackMode;
 	metadata: Record<string, TrackMetadata>;
@@ -38,6 +38,7 @@ export interface PlaylistManagerEvents {
 	onTrackChange: (track: MusicTrack | null) => void;
 	onPlaylistUpdate: (tracks: MusicTrack[]) => void;
 	onModeChange: (mode: PlaybackMode) => void;
+	onCategoryChange: (category: CategoryType) => void;
 }
 
 export interface ID3v2Header {

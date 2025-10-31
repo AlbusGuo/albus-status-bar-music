@@ -26,24 +26,11 @@ export class SettingsTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		// 标题和描述
+		// 标题
 		containerEl.createEl("h2", { text: "Status Bar Music 设置" });
 
-		containerEl.createEl("p", {
-			text: "在这里管理您的音乐文件夹。路径必须在您的 Obsidian 仓库内部。",
-			cls: "setting-item-description",
-		});
-
-		containerEl.createEl("p", {
-			text: "Manage your music folders here. Paths must be inside your Obsidian Vault.",
-			cls: "setting-item-description",
-		});
-
-		// 现有文件夹设置
-		this.displayFolderSettings();
-
-		// 添加新文件夹按钮
-		this.displayAddFolderButton();
+		// 音乐文件夹设置
+		this.displayMusicFolderSetting();
 
 		// 元数据统计
 		this.displayMetadataStats();
@@ -57,59 +44,72 @@ export class SettingsTab extends PluginSettingTab {
 	}
 
 	/**
-	 * 显示文件夹设置
+	 * 显示音乐文件夹设置
 	 */
-	private displayFolderSettings(): void {
-		this.settings.musicFolderPaths.forEach((path, index) => {
-			new Setting(this.containerEl)
-				.setName(`音乐文件夹 ${index + 1}`)
-				.setDesc("相对于仓库根目录的路径，例如: Music/Collection")
-				.addText((text) => {
-					text.setValue(path)
-						.setPlaceholder("例如: Music/Collection")
-						.onChange(async (value) => {
-							this.settings.musicFolderPaths[index] = value
-								.trim()
-								.replace(/\\/g, "/");
-							await this.saveCallback();
-						});
-				})
-				.addExtraButton((button) => {
-					button
-						.setIcon(ICONS.TRASH)
-						.setTooltip("删除此文件夹")
-						.onClick(async () => {
-							this.settings.musicFolderPaths.splice(index, 1);
-							await this.saveCallback();
-							this.display(); // 重新渲染设置页面
-						});
-				});
-		});
+	private displayMusicFolderSetting(): void {
+		new Setting(this.containerEl)
+			.setName("音乐文件夹")
+			.setDesc("设置包含音乐文件的文件夹路径。子文件夹将自动作为歌单。")
+			.addText((text) => {
+				text.setValue(this.settings.musicFolderPath)
+					.setPlaceholder("例如: Music")
+					.onChange(async (value) => {
+						// 只保存设置，不自动加载
+						this.settings.musicFolderPath = value.trim().replace(/\\/g, "/");
+						await this.saveCallback();
+					});
+			})
+			.addButton((button) => {
+				button
+					.setButtonText("加载音乐库")
+					.setCta()
+					.onClick(async () => {
+						await this.reloadMusicLibrary();
+					});
+			});
 	}
 
+	
+
 	/**
-	 * 显示添加文件夹按钮
+	 * 重新加载音乐库
 	 */
-	private displayAddFolderButton(): void {
-		new Setting(this.containerEl).addButton((button) => {
-			button
-				.setButtonText("添加新文件夹")
-				.setCta()
-				.onClick(async () => {
-					this.settings.musicFolderPaths.push("");
-					await this.saveCallback();
-					this.display(); // 重新渲染设置页面
-				});
-		});
+	private async reloadMusicLibrary(): Promise<void> {
+		try {
+			// 检查是否设置了音乐文件夹路径
+			if (!this.settings.musicFolderPath || this.settings.musicFolderPath.trim() === "") {
+				new Notice("请先设置音乐文件夹路径");
+				return;
+			}
+
+			// 显示加载提示
+			const notice = new Notice("正在扫描音乐文件...", 5000);
+			
+			// 重新初始化播放列表管理器
+			this.plugin.playlistManager.initializeMetadata(this.settings);
+			await this.plugin.playlistManager.loadFullPlaylist();
+			await this.plugin.playlistManager.refreshMetadata();
+			
+			// 播放列表显示会在 PlaylistManager 中自动更新
+			// 这里不需要额外调用 updatePlaylist()
+			
+			// 保存设置
+			await this.saveCallback();
+			
+			// 更新提示
+			const playlist = this.plugin.playlistManager.getPlaylist();
+			const playlists = this.plugin.playlistManager.getPlaylists();
+			new Notice(`扫描完成！找到 ${playlist.length} 首歌曲，${playlists.length} 个歌单`);
+		} catch (error) {
+			console.error("扫描音乐库失败:", error);
+			new Notice("扫描音乐库失败，请检查路径是否正确");
+		}
 	}
 
 /**
 	 * 显示元数据统计
 	 */
 	private displayMetadataStats(): void {
-		// 分隔线
-		this.containerEl.createEl("hr");
-
 		// 创建一个容器用于动态更新
 		this.metadataStatsContainer = this.containerEl.createEl("div", {
 			cls: "metadata-stats-container",
@@ -194,6 +194,8 @@ export class SettingsTab extends PluginSettingTab {
 			new Notice("清空缓存失败，请重试");
 		}
 	}
+
+	
 
 	/**
 	 * 启动定期更新

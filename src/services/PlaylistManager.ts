@@ -19,6 +19,8 @@ export class PlaylistManager {
 	private viewPlaylist: MusicTrack[] = [];
 	private currentTrack: MusicTrack | null = null;
 	private currentCategory: CategoryType = "all";
+	private searchQuery: string = "";
+	private playlists: Map<string, MusicTrack[]> = new Map();
 	private events: Partial<PlaylistManagerEvents> = {};
 
 	constructor(app: App, settings: PluginSettings, settingsRef?: () => PluginSettings) {
@@ -27,35 +29,28 @@ export class PlaylistManager {
 		this.settingsRef = settingsRef || (() => settings);
 		this.metadataManager = new MetadataManager(app);
 		
-		// 设置元数据更新回调
-		this.metadataManager.setMetadataUpdateCallback((metadata) => {
-			// 当元数据更新时，重新构建播放列表
-			this.rebuildPlaylistFromMetadata(metadata);
-		});
 		
-		// 初始化元数据管理器
+	}
+
+	
+
+	/**
+	 * 初始化元数据管理器
+	 */
+	initializeMetadata(settings: PluginSettings): void {
 		this.metadataManager.initializeFromSettings(settings);
 	}
 
 	/**
-	 * 从元数据重建播放列表
+	 * 更新播放列表的元数据（不重新构建播放列表）
 	 */
-	private rebuildPlaylistFromMetadata(metadata: Map<string, TrackMetadata>): void {
-		// 如果当前有播放列表，重新应用元数据
-		if (this.fullPlaylist.length > 0) {
-			this.fullPlaylist.forEach(track => {
-				const trackMetadata = metadata.get(track.path);
-				if (trackMetadata) {
-					track.metadata = trackMetadata;
-				}
-			});
-			
-			// 只有在元数据管理器完全初始化后才更新UI
-			if (this.metadataManager.isFullyInitialized()) {
-				this.updateView();
-				this.emit("onPlaylistUpdate", this.viewPlaylist);
+	private updatePlaylistMetadata(): void {
+		this.fullPlaylist.forEach(track => {
+			const updatedMetadata = this.metadataManager.getMetadata(track.path);
+			if (updatedMetadata) {
+				track.metadata = updatedMetadata;
 			}
-		}
+		});
 	}
 
 	/**
@@ -82,27 +77,31 @@ export class PlaylistManager {
 	}
 
 	/**
-	 * 加载完整播放列表（优化版本）
+	 * 加载完整播放列表（新的文件夹结构）
 	 */
 	async loadFullPlaylist(): Promise<void> {
+		// 保存当前用户选择的分类
+		const savedCategory = this.currentCategory;
+		
+		// 清空现有数据
 		this.fullPlaylist = [];
+		this.playlists.clear();
 
 		// 获取最新的设置
 		const currentSettings = this.settingsRef();
 
-		const validFolders = currentSettings.musicFolderPaths.filter(
-			(p) => p && p.trim() !== ""
-		);
-		if (validFolders.length === 0) {
+		if (!currentSettings.musicFolderPath || currentSettings.musicFolderPath.trim() === "") {
 			this.updateView();
 			return;
 		}
 
+		const musicFolderPath = normalizePath(currentSettings.musicFolderPath);
+		
 		// 分批处理文件收集，避免阻塞UI
 		const allFiles = this.app.vault.getFiles();
 		const collectedFiles = new Map<string, TFile>();
+		const playlistFolders = new Set<string>();
 		const batchSize = 50; // 每批处理50个文件
-		let processed = 0;
 
 		for (let i = 0; i < allFiles.length; i += batchSize) {
 			const batch = allFiles.slice(i, i + batchSize);
@@ -110,17 +109,19 @@ export class PlaylistManager {
 			// 处理当前批次
 			batch.forEach(file => {
 				const isMusicFile = isSupportedAudioFile(file.name);
-				if (isMusicFile) {
-					const isInValidFolder = validFolders.some(folder => {
-						const normalizedPath = normalizePath(folder);
-						return file.path.startsWith(normalizedPath);
-					});
+				if (isMusicFile && file.path.startsWith(musicFolderPath)) {
+					collectedFiles.set(file.path, file);
 					
-					if (isInValidFolder) {
-						collectedFiles.set(file.path, file);
+					// 检测子文件夹作为歌单
+					const relativePath = file.path.substring(musicFolderPath.length);
+					const pathParts = relativePath.split('/').filter(part => part);
+					
+					if (pathParts.length > 1) {
+						// 有子文件夹，将第一层子文件夹作为歌单
+						const playlistName = pathParts[0];
+						playlistFolders.add(playlistName);
 					}
 				}
-				processed++;
 			});
 
 			// 每处理一批后稍作延迟，让UI有机会响应
@@ -131,7 +132,7 @@ export class PlaylistManager {
 
 		// 文件处理完成
 
-		// 创建播放列表项
+		// 创建播放列表项和歌单映射
 		const fileArray = Array.from(collectedFiles.values());
 		
 		this.fullPlaylist = fileArray.map((file, index) => {
@@ -144,44 +145,95 @@ export class PlaylistManager {
 				cover: null,
 			};
 			
-			return {
+			const track = {
 				id: index,
 				name: file.basename,
 				path: file.path,
 				resourcePath: this.app.vault.getResourcePath(file),
 				metadata: metadata,
 			};
+
+			// 将歌曲添加到对应的歌单中
+			const relativePath = file.path.substring(musicFolderPath.length);
+			const pathParts = relativePath.split('/').filter(part => part);
+			
+			if (pathParts.length > 1) {
+				// 属于子文件夹歌单
+				const playlistName = pathParts[0];
+				if (!this.playlists.has(playlistName)) {
+					this.playlists.set(playlistName, []);
+				}
+				// 确保不会重复添加同一首歌
+				const playlist = this.playlists.get(playlistName)!;
+				if (!playlist.some(t => t.path === track.path)) {
+					playlist.push(track);
+				}
+			}
+			
+			return track;
 		});
+
+		// 恢复用户之前选择的分类（如果仍然有效）
+		if (savedCategory && savedCategory !== "all" && savedCategory !== "favorite") {
+			// 检查之前选择的歌单是否还存在
+			if (this.playlists.has(savedCategory)) {
+				this.currentCategory = savedCategory;
+			} else {
+				// 歌单不存在，回退到 "all"
+				this.currentCategory = "all";
+			}
+		} else {
+			// 恢复 "all" 或 "favorite" 分类
+			this.currentCategory = savedCategory;
+		}
 
 		this.updateView();
 		this.emit("onPlaylistUpdate", this.viewPlaylist);
+		
+		// 额外确保UI组件收到元数据更新
+		setTimeout(() => {
+			// 再次触发更新，确保封面数据正确显示
+			this.emit("onPlaylistUpdate", this.viewPlaylist);
+		}, 100);
 	}
 
 	/**
-	 * 刷新元数据
+	 * 刷新音乐库和元数据
 	 */
 	async refreshMetadata(): Promise<void> {
-		// 开始元数据刷新
-		
 		const currentSettings = this.settingsRef();
-		const validFolders = currentSettings.musicFolderPaths.filter(
-			(p) => p && p.trim() !== ""
-		);
 		
-		if (validFolders.length === 0) {
+		if (!currentSettings.musicFolderPath || currentSettings.musicFolderPath.trim() === "") {
 			// 无有效音乐文件夹
 			this.emit("onPlaylistUpdate", []);
 			return;
 		}
 
-		// 使用 MetadataManager 刷新元数据
-		await this.metadataManager.refreshAllMetadata(validFolders);
-		
-		// 更新设置对象中的元数据
-		const metadataExport = this.metadataManager.exportToSettings();
-		currentSettings.metadata = metadataExport.metadata;
-		
-		// 元数据刷新完成
+		try {
+			// 重新加载整个音乐库
+			await this.loadFullPlaylist();
+			
+			// 使用 MetadataManager 刷新元数据
+			await this.metadataManager.refreshAllMetadata([currentSettings.musicFolderPath]);
+			
+			// 更新设置对象中的元数据
+			const metadataExport = this.metadataManager.exportToSettings();
+			currentSettings.metadata = metadataExport.metadata;
+			
+			// 更新播放列表的元数据
+			this.updatePlaylistMetadata();
+			
+			// 重新更新视图以确保歌单过滤正确
+			this.updateView();
+			
+			// 触发UI更新
+			this.emit("onPlaylistUpdate", this.viewPlaylist);
+			
+		} catch (error) {
+			console.error("Failed to refresh music library:", error);
+			// 即使刷新失败，也要确保UI有响应
+			this.emit("onPlaylistUpdate", this.viewPlaylist);
+		}
 	}
 
 	/**
@@ -200,10 +252,32 @@ export class PlaylistManager {
 				);
 				break;
 			default:
-				sourcePlaylist = this.fullPlaylist.filter((track) =>
-					track.path.startsWith(this.currentCategory)
-				);
+				// 检查是否是歌单名称
+				const playlistTracks = this.getPlaylistTracks(this.currentCategory);
+				if (playlistTracks.length > 0) {
+					sourcePlaylist = playlistTracks;
+				} else {
+					// 兼容旧的路径方式
+					sourcePlaylist = this.fullPlaylist.filter((track) =>
+						track.path.startsWith(this.currentCategory)
+					);
+				}
 				break;
+		}
+
+		// 应用搜索过滤
+		if (this.searchQuery) {
+			sourcePlaylist = sourcePlaylist.filter((track) => {
+				const title = track.metadata?.title || track.name;
+				const artist = track.metadata?.artist || "";
+				const album = track.metadata?.album || "";
+				
+				return (
+					title.toLowerCase().includes(this.searchQuery) ||
+					artist.toLowerCase().includes(this.searchQuery) ||
+					album.toLowerCase().includes(this.searchQuery)
+				);
+			});
 		}
 
 		if (this.settings.playbackMode === "shuffle") {
@@ -240,6 +314,38 @@ export class PlaylistManager {
 	setCategory(category: CategoryType): void {
 		this.currentCategory = category;
 		this.updateView();
+		this.emit("onPlaylistUpdate", this.viewPlaylist);
+		this.emit("onCategoryChange", category);
+	}
+
+	/**
+	 * 设置搜索查询
+	 */
+	setSearchQuery(query: string): void {
+		this.searchQuery = query.trim().toLowerCase();
+		this.updateView();
+	}
+
+	/**
+	 * 获取所有歌单名称
+	 */
+	getPlaylists(): string[] {
+		return Array.from(this.playlists.keys()).sort();
+	}
+
+	/**
+	 * 获取指定歌单的曲目
+	 */
+	getPlaylistTracks(playlistName: string): MusicTrack[] {
+		const playlist = this.playlists.get(playlistName);
+		return playlist ? [...playlist] : [];
+	}
+
+	/**
+	 * 获取当前播放列表
+	 */
+	getPlaylist(): MusicTrack[] {
+		return this.viewPlaylist;
 	}
 
 	/**
@@ -322,9 +428,8 @@ export class PlaylistManager {
 	 * 处理文件变化
 	 */
 	handleFileChange(path: string): void {
-		const isInMusicFolder = this.settings.musicFolderPaths.some(
-			(p) => p && path.startsWith(p)
-		);
+		const isInMusicFolder = this.settings.musicFolderPath && 
+			path.startsWith(normalizePath(this.settings.musicFolderPath));
 
 		if (isInMusicFolder) {
 			// 删除相关元数据缓存
@@ -341,20 +446,17 @@ export class PlaylistManager {
 	getCategories(): { value: string; label: string }[] {
 		const categories = [
 			{ value: "all", label: "所有歌曲" },
-			{ value: "favorite", label: "喜爱列表" },
+			{ value: "favorite", label: "红心歌单" },
 		];
 
-		const validFolders = this.settings.musicFolderPaths.filter(
-			(p) => p && p.trim() !== ""
-		);
-		if (validFolders.length > 1) {
-			validFolders.forEach((path) => {
-				categories.push({
-					value: path,
-					label: path.split("/").pop() || path,
-				});
+		// 添加歌单分类
+		const playlists = this.getPlaylists();
+		playlists.forEach(playlistName => {
+			categories.push({
+				value: playlistName,
+				label: playlistName,
 			});
-		}
+		});
 
 		return categories;
 	}

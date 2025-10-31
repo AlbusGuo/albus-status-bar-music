@@ -2,7 +2,7 @@ import { PlaybackMode, PluginSettings } from "../types";
 import { PLAYBACK_MODES } from "./constants";
 
 export const DEFAULT_SETTINGS: PluginSettings = {
-	musicFolderPaths: [],
+	musicFolderPath: "",
 	favorites: [],
 	playbackMode: PLAYBACK_MODES[0] as PlaybackMode,
 	metadata: {},

@@ -13,9 +13,7 @@ export class MetadataManager {
 	private cache: Map<string, TrackMetadata> = new Map();
 	private isDirty: boolean = false;
 	private saveTimeout: NodeJS.Timeout | null = null;
-	private onMetadataUpdate?: (metadata: Map<string, TrackMetadata>) => void;
-	private coverLoadingQueue: Set<string> = new Set();
-	private coverLoadingTimeout: NodeJS.Timeout | null = null;
+	private onSaveNeeded?: () => void;
 	private isInitialized: boolean = false;
 	private totalTracks: number = 0;
 	private processedTracks: number = 0;
@@ -25,11 +23,13 @@ export class MetadataManager {
 		this.parser = new MetadataParser();
 	}
 
+	
+
 	/**
-	 * 设置元数据更新回调
+	 * 设置保存回调
 	 */
-	setMetadataUpdateCallback(callback: (metadata: Map<string, TrackMetadata>) => void): void {
-		this.onMetadataUpdate = callback;
+	setSaveCallback(callback: () => void): void {
+		this.onSaveNeeded = callback;
 	}
 
 	/**
@@ -62,14 +62,21 @@ initializeFromSettings(settings: PluginSettings): void {
 			this.totalTracks = Object.keys(settings.metadata).length;
 			
 			Object.entries(settings.metadata).forEach(([path, metadata]) => {
-				// 轻量级初始化：只保存基本信息，封面延迟加载，避免阻塞启动
-				const lightMetadata: TrackMetadata = {
+				// 智能初始化：过滤掉失效的blob URL，只保留有效的封面数据
+				let validCover = metadata.cover;
+				
+				// 如果是blob URL，在初始化时设为null，避免加载错误
+				if (validCover && validCover.startsWith('blob:')) {
+					validCover = null; // blob URL会在refreshMetadata时重新生成
+				}
+				
+				const fullMetadata: TrackMetadata = {
 					title: metadata.title,
 					artist: metadata.artist,
 					album: metadata.album,
-					cover: null // 封面延迟加载，避免阻塞启动
+					cover: validCover // 只保留有效的封面数据
 				};
-				this.cache.set(path, lightMetadata);
+				this.cache.set(path, fullMetadata);
 				this.processedTracks++;
 			});
 		} else {
@@ -78,9 +85,6 @@ initializeFromSettings(settings: PluginSettings): void {
 		
 		// 标记为已初始化
 		this.isInitialized = true;
-		
-		// 元数据管理器初始化完成
-		this.notifyUpdate();
 	}
 
 	/**
@@ -108,8 +112,10 @@ initializeFromSettings(settings: PluginSettings): void {
 			return;
 		}
 
-		// 清空现有缓存
-		this.cache.clear();
+		// 获取现有数据（从data.json）
+		const existingData = await this.loadExistingData();
+		
+		// 不清空现有缓存，保留已有数据
 		this.isDirty = true;
 
 		// 获取所有音乐文件
@@ -127,35 +133,98 @@ initializeFromSettings(settings: PluginSettings): void {
 
 		// 发现音乐文件
 
-		// 处理每个文件
+		// 批量处理所有文件，等待全部完成后再更新UI
+		const processingPromises: Promise<void>[] = [];
 		let processedCount = 0;
-		for (const file of musicFiles) {
-			try {
-				const metadata = await this.extractFileMetadata(file);
-				this.cache.set(file.path, metadata);
-				processedCount++;
+		let skippedCount = 0;
 
-				// 每处理5个文件就通知一次更新
-				if (processedCount % 5 === 0) {
-					this.notifyUpdate();
-					await new Promise(resolve => setTimeout(resolve, 10));
-				}
-			} catch (error) {
-				console.error(`MetadataManager: Failed to process ${file.path}:`, error);
-				// 添加默认元数据
-				const defaultMetadata: TrackMetadata = {
-					title: file.basename,
-					artist: "未知艺术家",
-					album: "未知专辑",
-					cover: null
-				};
-				this.cache.set(file.path, defaultMetadata);
+		for (const file of musicFiles) {
+			const processingPromise = this.processFileIfNeeded(file, existingData);
+			processingPromise.then(() => {
+				processedCount++;
+			}).catch(() => {
+				// 即使出错也算作处理完成
+				processedCount++;
+			});
+			processingPromises.push(processingPromise);
+		}
+
+		// 等待所有文件处理完成
+		await Promise.allSettled(processingPromises);
+
+		// 统计跳过的文件数量
+		for (const file of musicFiles) {
+			if (existingData.metadata && existingData.metadata[file.path]) {
+				skippedCount++;
 			}
 		}
 
 		// 文件处理完成
-		this.notifyUpdate();
+
+		// 所有文件处理完成后，保存设置
 		this.scheduleSave();
+	}
+
+	/**
+	 * 加载现有数据
+	 */
+	private async loadExistingData(): Promise<any> {
+		try {
+			// 尝试读取插件数据文件
+			const configDir = this.app.vault.configDir;
+			const dataPath = `${configDir}/plugins/albus-status-bar-music/data.json`;
+			
+			const dataFile = this.app.vault.getAbstractFileByPath(dataPath);
+			if (dataFile instanceof TFile) {
+				const content = await this.app.vault.read(dataFile);
+				return JSON.parse(content);
+			}
+		} catch (error) {
+			console.warn('MetadataManager: 无法加载现有数据，将重新处理所有文件:', error);
+		}
+		
+		return { metadata: {} };
+	}
+
+	/**
+	 * 根据需要处理文件
+	 */
+	private async processFileIfNeeded(file: TFile, existingData: any): Promise<void> {
+		try {
+			// 检查文件是否已存在于现有数据中
+			if (existingData.metadata && existingData.metadata[file.path]) {
+				const existingMetadata = existingData.metadata[file.path];
+				
+				// 验证现有数据的完整性
+				if (existingMetadata.title && existingMetadata.artist) {
+					// 数据完整，直接使用现有数据
+					const metadata: TrackMetadata = {
+						title: existingMetadata.title,
+						artist: existingMetadata.artist,
+						album: existingMetadata.album || "未知专辑",
+						cover: existingMetadata.cover || null
+					};
+					
+					this.cache.set(file.path, metadata);
+					return; // 跳过重新处理
+				}
+			}
+
+			// 文件不存在或数据不完整，需要重新处理
+			const metadata = await this.extractFileMetadata(file);
+			this.cache.set(file.path, metadata);
+			
+		} catch (error) {
+			console.error(`MetadataManager: 处理文件失败 ${file.path}:`, error);
+			// 添加默认元数据
+			const defaultMetadata: TrackMetadata = {
+				title: file.basename,
+				artist: "未知艺术家",
+				album: "未知专辑",
+				cover: null
+			};
+			this.cache.set(file.path, defaultMetadata);
+		}
 	}
 
 	/**
@@ -163,56 +232,21 @@ initializeFromSettings(settings: PluginSettings): void {
 	 */
 	private async extractFileMetadata(file: TFile): Promise<TrackMetadata> {
 		const arrayBuffer = await this.app.vault.readBinary(file);
-		return await this.parser.extractMetadata(arrayBuffer);
+		const metadata = await this.parser.extractMetadata(arrayBuffer);
+		
+		return metadata;
 	}
+
+	
 
 	/**
 	 * 获取文件的元数据
 	 */
 	getMetadata(filePath: string): TrackMetadata | null {
-		const metadata = this.cache.get(filePath);
-		if (metadata) {
-			// 如果没有封面，尝试异步加载
-			if (!metadata.cover) {
-				this.loadCoverAsync(filePath);
-			}
-		}
-		return metadata || null;
+		return this.cache.get(filePath) || null;
 	}
 
-	/**
-	 * 异步加载封面（防抖处理）
-	 */
-	private loadCoverAsync(filePath: string): void {
-		// 避免重复加载
-		if (this.coverLoadingQueue.has(filePath)) {
-			return;
-		}
-		
-		this.coverLoadingQueue.add(filePath);
-		
-		// 防抖处理，避免同时加载太多封面
-		if (this.coverLoadingTimeout) {
-			clearTimeout(this.coverLoadingTimeout);
-		}
-		
-		this.coverLoadingTimeout = setTimeout(async () => {
-			const filesToLoad = Array.from(this.coverLoadingQueue);
-			this.coverLoadingQueue.clear();
-			
-			// 限制同时加载数量，避免阻塞UI
-			const batchSize = 3;
-			for (let i = 0; i < filesToLoad.length; i += batchSize) {
-				const batch = filesToLoad.slice(i, i + batchSize);
-				await Promise.all(batch.map(path => this.loadCoverForFile(path)));
-				
-				// 批次间稍作延迟
-				if (i + batchSize < filesToLoad.length) {
-					await new Promise(resolve => setTimeout(resolve, 100));
-				}
-			}
-		}, 200);
-	}
+	
 
 	/**
 	 * 为单个文件加载封面
@@ -225,7 +259,6 @@ initializeFromSettings(settings: PluginSettings): void {
 				const existingMetadata = this.cache.get(filePath);
 				if (existingMetadata && metadata.cover) {
 					existingMetadata.cover = metadata.cover;
-					this.notifyUpdate();
 				}
 			}
 		} catch (error) {
@@ -262,7 +295,8 @@ initializeFromSettings(settings: PluginSettings): void {
 		switch (type) {
 			case 'delete':
 				this.cache.delete(filePath);
-				console.log(`MetadataManager: Removed metadata for deleted file ${filePath}`);
+				// Removed metadata for deleted file
+				this.scheduleSave(); // 立即保存删除的元数据
 				break;
 			
 			case 'create':
@@ -274,28 +308,18 @@ initializeFromSettings(settings: PluginSettings): void {
 						if (file instanceof TFile) {
 							const metadata = await this.extractFileMetadata(file);
 							this.cache.set(filePath, metadata);
-							console.log(`MetadataManager: Updated metadata for ${filePath}`);
+							// Updated metadata for file
+							this.scheduleSave(); // 立即保存更新的元数据
 						}
 					} catch (error) {
 						console.error(`MetadataManager: Failed to update metadata for ${filePath}:`, error);
 					}
-					this.notifyUpdate();
-					this.scheduleSave();
 				}, 500);
 				break;
 		}
-
-		this.notifyUpdate();
 	}
 
-	/**
-	 * 通知更新
-	 */
-	private notifyUpdate(): void {
-		if (this.onMetadataUpdate) {
-			this.onMetadataUpdate(new Map(this.cache));
-		}
-	}
+	
 
 	/**
 	 * 计划保存（防抖）
@@ -307,8 +331,11 @@ initializeFromSettings(settings: PluginSettings): void {
 
 		this.saveTimeout = setTimeout(() => {
 			this.isDirty = false;
-			// 准备保存
-		}, 1000);
+			// 通知主插件保存设置
+			if (this.onSaveNeeded) {
+				this.onSaveNeeded();
+			}
+		}, 500); // 减少延迟，确保及时保存
 	}
 
 	/**
@@ -318,6 +345,12 @@ initializeFromSettings(settings: PluginSettings): void {
 		return this.isDirty;
 	}
 
+	
+
+	
+
+	
+
 	/**
 	 * 清理资源
 	 */
@@ -325,11 +358,7 @@ initializeFromSettings(settings: PluginSettings): void {
 		if (this.saveTimeout) {
 			clearTimeout(this.saveTimeout);
 		}
-		if (this.coverLoadingTimeout) {
-			clearTimeout(this.coverLoadingTimeout);
-		}
 		this.parser.cleanup();
 		this.cache.clear();
-		this.coverLoadingQueue.clear();
 	}
 }

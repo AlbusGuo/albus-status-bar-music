@@ -58,4 +58,5 @@ export const ICONS = {
 	REPEAT_ONE: "repeat-1",
 	SHUFFLE: "shuffle",
 	TRASH: "trash",
+	LIST: "list",
 } as const;

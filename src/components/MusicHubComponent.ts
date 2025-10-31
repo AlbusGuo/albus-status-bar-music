@@ -9,7 +9,8 @@ export class MusicHubComponent {
 	private functionBar: HTMLElement;
 	private favButton: HTMLButtonElement;
 	private refreshButton: HTMLButtonElement;
-	private categorySelect: HTMLSelectElement;
+	private searchInput: HTMLInputElement;
+	private playlistToggleButton: HTMLButtonElement;
 	private modeButton: HTMLButtonElement;
 	private controlsEl: HTMLElement;
 	private leftVinylButton: HTMLButtonElement;
@@ -23,13 +24,18 @@ export class MusicHubComponent {
 
 	private isDragging = false;
 	private isVisible = false;
-	private isHiding = false;
-	private hideTimeout: NodeJS.Timeout | null = null;
+	private isFirstShow = true;
+	private dragOffset = { x: 0, y: 0 };
+	private dragHandle: HTMLElement | null = null;
 
 	private events: {
 		onFavoriteToggle?: () => void;
 		onRefresh?: () => void;
+		onSearch?: (query: string) => void;
+		onPlaylistToggle?: () => void;
 		onCategoryChange?: (category: string) => void;
+		onGetCategories?: () => { value: string; label: string }[];
+		onGetCurrentCategory?: () => string;
 		onModeToggle?: () => void;
 		onPrevious?: () => void;
 		onNext?: () => void;
@@ -40,8 +46,13 @@ export class MusicHubComponent {
 	} = {};
 
 	constructor() {
-		this.createElements();
-		this.setupEventListeners();
+		try {
+			this.createElements();
+			this.setupEventListeners();
+		} catch (error) {
+			console.error('MusicHubComponent constructor error:', error);
+			throw error;
+		}
 	}
 
 	/**
@@ -52,6 +63,11 @@ export class MusicHubComponent {
 			cls: CSS_CLASSES.HUB_CONTAINER,
 		});
 		this.containerEl.hide();
+
+		// 添加拖拽手柄
+		this.dragHandle = this.containerEl.createEl("div", {
+			cls: "hub-drag-handle",
+		});
 
 		// 功能按钮栏
 		this.createFunctionBar();
@@ -73,28 +89,20 @@ export class MusicHubComponent {
 			cls: "hub-function-bar",
 		});
 
-		// 收藏按钮
-		this.favButton = this.functionBar.createEl("button", {
-			cls: "hub-function-button",
-		});
-		setIcon(this.favButton, ICONS.HEART);
-
 		// 刷新按钮
 		this.refreshButton = this.functionBar.createEl("button", {
-			cls: "hub-function-button",
+			cls: "hub-function-button hub-refresh-button",
 		});
 		setIcon(this.refreshButton, ICONS.REFRESH);
 
-		// 分类选择器
-		this.categorySelect = this.functionBar.createEl("select", {
-			cls: "hub-function-select",
+		// 搜索框
+		this.searchInput = this.functionBar.createEl("input", {
+			cls: "hub-search-input",
+			type: "text",
+			attr: { placeholder: "搜索歌曲、艺术家..." }
 		});
 
-		// 播放模式按钮
-		this.modeButton = this.functionBar.createEl("button", {
-			cls: "hub-function-button",
-		});
-		setIcon(this.modeButton, ICONS.REPEAT);
+		
 	}
 
 	/**
@@ -157,17 +165,43 @@ export class MusicHubComponent {
 			cls: "hub-progress-thumb",
 		});
 
-		// 时间显示
-		this.timeDisplay = progressTimeContainer.createEl("div", {
+		// 时间显示和控制按钮容器
+		const timeControlContainer = progressTimeContainer.createEl("div", {
+			cls: "hub-time-control-container",
+		});
+
+		// 播放模式按钮（左侧）
+		this.modeButton = timeControlContainer.createEl("button", {
+			cls: "hub-control-button",
+		});
+		setIcon(this.modeButton, ICONS.REPEAT);
+
+		// 播放列表选择器
+		this.playlistToggleButton = timeControlContainer.createEl("button", {
+			cls: "hub-control-button hub-playlist-toggle",
+		});
+		setIcon(this.playlistToggleButton, ICONS.LIST);
+
+		// 时间显示（中间）
+		this.timeDisplay = timeControlContainer.createEl("div", {
 			cls: "hub-time-display",
 			text: "--:-- / --:--",
 		});
+
+		// 收藏按钮（右侧）
+		this.favButton = timeControlContainer.createEl("button", {
+			cls: "hub-control-button hub-favorite-button",
+		});
+		setIcon(this.favButton, ICONS.HEART);
 	}
 
 	/**
 	 * 设置事件监听器
 	 */
 	private setupEventListeners(): void {
+		// 拖拽事件
+		this.dragHandle?.addEventListener("mousedown", this.handleHubDragStart);
+		
 		// 功能按钮事件
 		this.favButton.addEventListener("click", () => {
 			this.events.onFavoriteToggle?.();
@@ -177,8 +211,20 @@ export class MusicHubComponent {
 			this.events.onRefresh?.();
 		});
 
-		this.categorySelect.addEventListener("change", () => {
-			this.events.onCategoryChange?.(this.categorySelect.value);
+		// 搜索框事件
+		this.searchInput.addEventListener("input", () => {
+			this.events.onSearch?.(this.searchInput.value);
+		});
+
+		// 播放列表切换按钮事件
+		this.playlistToggleButton.addEventListener("click", (e) => {
+			e.stopPropagation(); // 防止事件冒泡
+			const existingSelector = this.containerEl.querySelector(".playlist-selector-container");
+			if (existingSelector) {
+				this.hidePlaylistSelector();
+			} else {
+				this.showPlaylistSelector();
+			}
 		});
 
 		this.modeButton.addEventListener("click", () => {
@@ -200,10 +246,7 @@ export class MusicHubComponent {
 			this.handleDragStart
 		);
 
-		// 点击外部关闭
-		document.addEventListener("click", this.handleDocumentClick, {
-			capture: true,
-		});
+		// 点击外部关闭功能已禁用 - 现在只能通过状态栏按钮关闭
 	}
 
 	/**
@@ -266,17 +309,7 @@ export class MusicHubComponent {
 		this.progressThumb.style.left = `calc(${percent}% - 5px)`;
 	}
 
-	/**
-	 * 处理文档点击（用于关闭Hub）
-	 */
-	private handleDocumentClick = (e: Event): void => {
-		if (!this.isVisible) return;
-
-		const target = e.target as HTMLElement;
-		if (!this.containerEl.contains(target)) {
-			this.hide();
-		}
-	};
+	
 
 	/**
 	 * 注册事件监听器
@@ -285,86 +318,94 @@ export class MusicHubComponent {
 		(this.events as any)[event] = callback;
 	}
 
-	/**
+/**
 	 * 显示Hub
 	 */
 	show(anchorElement: HTMLElement): void {
-		const buttonRect = anchorElement.getBoundingClientRect();
-		const hubWidth = 380; // 与CSS中的容器宽度一致
-		const screenWidth = window.innerWidth;
-		const screenHeight = window.innerHeight;
+		try {
+			// 检查是否已有保存的位置
+			const savedLeft = this.containerEl.style.left;
+			const savedTop = this.containerEl.style.top;
+			
+			// 确保容器显示 - 强制设置显示样式
+			this.containerEl.show();
+			this.containerEl.style.display = 'block';
+			this.containerEl.style.visibility = 'visible';
+			
+			if (savedLeft && savedTop) {
+				// 使用保存的位置
+				this.containerEl.style.left = savedLeft;
+				this.containerEl.style.top = savedTop;
+			} else {
+				// 首次显示，计算默认位置
+				const buttonRect = anchorElement.getBoundingClientRect();
+				const hubWidth = 380; // 与CSS中的容器宽度一致
+				const screenWidth = window.innerWidth;
+				const screenHeight = window.innerHeight;
 
-		// 先显示容器以获取实际高度
-		this.containerEl.show();
-		const hubHeight = this.containerEl.offsetHeight;
+				// 获取容器实际高度
+				const hubHeight = this.containerEl.offsetHeight;
 
-		// 计算水平位置
-		let hubLeft = buttonRect.left;
-		if (hubLeft + hubWidth > screenWidth) {
-			hubLeft = buttonRect.right - hubWidth;
+				// 计算水平位置
+				let hubLeft = buttonRect.left;
+				if (hubLeft + hubWidth > screenWidth) {
+					hubLeft = buttonRect.right - hubWidth;
+				}
+				hubLeft = Math.max(10, hubLeft); // 确保不超出左边界，至少留10px边距
+
+				// 计算垂直位置 - 优先显示在按钮上方
+				let hubTop = buttonRect.top - hubHeight - 10; // 10px 间距
+				
+				// 如果上方空间不足，显示在下方
+				if (hubTop < 10) {
+					hubTop = buttonRect.bottom + 10;
+				}
+
+				// 确保不超出屏幕底部，留至少10px边距
+				if (hubTop + hubHeight > screenHeight - 10) {
+					hubTop = screenHeight - hubHeight - 10;
+				}
+
+				// 最终确保不超出顶部
+				hubTop = Math.max(10, hubTop);
+
+				this.containerEl.style.left = `${hubLeft}px`;
+				this.containerEl.style.top = `${hubTop}px`;
+				this.containerEl.style.bottom = 'auto'; // 取消bottom设置
+			}
+
+			this.isVisible = true;
+
+			// 如果是第一次显示，自动触发刷新
+			if (this.isFirstShow) {
+				this.isFirstShow = false;
+				// 延迟一点时间确保UI完全渲染后再触发刷新
+				setTimeout(() => {
+					this.events.onRefresh?.();
+				}, 100);
+			}
+		} catch (error) {
+			console.error('MusicHub: Error showing hub:', error);
 		}
-		hubLeft = Math.max(10, hubLeft); // 确保不超出左边界，至少留10px边距
-
-		// 计算垂直位置 - 优先显示在按钮上方
-		let hubTop = buttonRect.top - hubHeight - 10; // 10px 间距
-		
-		// 如果上方空间不足，显示在下方
-		if (hubTop < 10) {
-			hubTop = buttonRect.bottom + 10;
-		}
-
-		// 确保不超出屏幕底部，留至少10px边距
-		if (hubTop + hubHeight > screenHeight - 10) {
-			hubTop = screenHeight - hubHeight - 10;
-		}
-
-		// 最终确保不超出顶部
-		hubTop = Math.max(10, hubTop);
-
-		this.containerEl.style.top = `${hubTop}px`;
-		this.containerEl.style.left = `${hubLeft}px`;
-		this.containerEl.style.bottom = 'auto'; // 取消bottom设置
-
-		this.isVisible = true;
-	}
-
-	/**
+	}	/**
 	 * 隐藏Hub
 	 */
 	hide(): void {
-		// 设置隐藏标志，防止立即重新打开
-		this.isHiding = true;
-		
-		// 清除之前的超时
-		if (this.hideTimeout) {
-			clearTimeout(this.hideTimeout);
-		}
-		
 		this.containerEl.hide();
+		this.containerEl.style.display = 'none';
 		this.isVisible = false;
 		this.events.onHide?.();
-		
-		// 200ms后清除隐藏标志
-		this.hideTimeout = setTimeout(() => {
-			this.isHiding = false;
-		}, 200);
 	}
 
 	/**
 	 * 切换显示状态
 	 */
 	toggle(anchorElement: HTMLElement): void {
-		// 如果正在隐藏过程中，忽略这次点击
-		if (this.isHiding) {
-			console.log('MusicHub: Ignoring toggle - currently hiding');
-			return;
-		}
-		
 		if (this.isVisible) {
-			console.log('MusicHub: Hiding music hub (currently visible)');
+			// Hiding music hub (currently visible)
 			this.hide();
 		} else {
-			console.log('MusicHub: Showing music hub (currently hidden)');
+			// Showing music hub (currently hidden)
 			this.show(anchorElement);
 		}
 	}
@@ -398,6 +439,51 @@ export class MusicHubComponent {
 	updateCurrentTrack(track: MusicTrack | null): void {
 		this.vinylPlayer.setTrack(track);
 		// 更新左右唱片的封面将在主插件中处理
+		// 更新背景封面
+		this.updateBackgroundCover(track);
+	}
+
+	/**
+	 * 更新背景封面
+	 */
+	private updateBackgroundCover(track: MusicTrack | null): void {
+		if (track && track.metadata?.cover) {
+			// 有封面，设置背景图片
+			this.containerEl.style.setProperty('--background-cover', `url(${track.metadata.cover})`);
+			this.containerEl.addClass('has-background');
+			this.containerEl.removeClass('no-cover');
+			
+			// 预加载图片以确保背景显示
+			const img = new Image();
+			img.onload = () => {
+				// 图片加载成功，更新背景
+				this.containerEl.style.setProperty('--background-cover', `url(${track.metadata.cover})`);
+				this.containerEl.addClass('has-background');
+				this.containerEl.removeClass('no-cover');
+			};
+			img.onerror = () => {
+				// 图片加载失败，使用灰色蒙版
+				this.applyNoCoverBackground();
+			};
+			img.src = track.metadata.cover;
+		} else if (track) {
+			// 有音乐但无封面，使用灰色蒙版
+			this.applyNoCoverBackground();
+		} else {
+			// 没有音乐，移除所有背景
+			this.containerEl.removeClass('has-background');
+			this.containerEl.removeClass('no-cover');
+			this.containerEl.style.removeProperty('--background-cover');
+		}
+	}
+
+	/**
+	 * 应用无封面时的灰色蒙版背景
+	 */
+	private applyNoCoverBackground(): void {
+		this.containerEl.addClass('has-background');
+		this.containerEl.addClass('no-cover');
+		this.containerEl.style.removeProperty('--background-cover');
 	}
 
 	/**
@@ -461,29 +547,7 @@ export class MusicHubComponent {
 		});
 	}
 
-	/**
-	 * 更新分类选择器
-	 */
-	updateCategorySelector(
-		categories: { value: string; label: string }[]
-	): void {
-		const currentValue = this.categorySelect.value;
-		this.categorySelect.empty();
-
-		categories.forEach((category) => {
-			const option = this.categorySelect.createEl("option", {
-				value: category.value,
-				text: category.label,
-			});
-		});
-
-		// 恢复之前的选择
-		if (categories.some((cat) => cat.value === currentValue)) {
-			this.categorySelect.value = currentValue;
-		} else {
-			this.categorySelect.value = "all";
-		}
-	}
+	
 
 	/**
 	 * 更新进度显示
@@ -523,6 +587,9 @@ export class MusicHubComponent {
 				text: "正在加载音乐库...",
 				cls: "playlist-loading",
 			});
+			
+			// 为加载状态应用无封面背景样式
+			this.applyNoCoverBackground();
 			return;
 		}
 
@@ -531,7 +598,20 @@ export class MusicHubComponent {
 				text: "此列表为空",
 				cls: "playlist-empty",
 			});
+			
+			// 为空列表应用无封面背景样式
+			this.applyNoCoverBackground();
 			return;
+		}
+
+		// 有歌曲时，确保背景由当前播放歌曲决定
+		// 但只有当当前歌曲在新歌单中时才应用
+		const isCurrentTrackInNewPlaylist = currentTrack && tracks.some(track => track.id === currentTrack.id);
+		if (tracks.length > 0 && isCurrentTrackInNewPlaylist && currentTrack) {
+			this.updateBackgroundCover(currentTrack);
+		} else if (tracks.length > 0) {
+			// 如果当前歌曲不在新歌单中，使用新歌单第一首歌的封面（如果有）
+			this.updateBackgroundCover(tracks[0]);
 		}
 
 		tracks.forEach((track) => {
@@ -671,25 +751,177 @@ export class MusicHubComponent {
 	}
 
 /**
+	 * 处理音乐中心拖拽开始
+	 */
+	private handleHubDragStart = (e: MouseEvent): void => {
+		this.isDragging = true;
+		this.containerEl.addClass(CSS_CLASSES.IS_DRAGGING);
+
+		const rect = this.containerEl.getBoundingClientRect();
+		this.dragOffset.x = e.clientX - rect.left;
+		this.dragOffset.y = e.clientY - rect.top;
+
+		document.addEventListener("mousemove", this.handleHubDragMove);
+		document.addEventListener("mouseup", this.handleHubDragEnd);
+
+		e.preventDefault();
+	};
+
+	/**
+	 * 处理音乐中心拖拽移动
+	 */
+	private handleHubDragMove = (e: MouseEvent): void => {
+		if (this.isDragging) {
+			const newX = e.clientX - this.dragOffset.x;
+			const newY = e.clientY - this.dragOffset.y;
+
+			// 限制在视窗内
+			const maxX = window.innerWidth - this.containerEl.offsetWidth;
+			const maxY = window.innerHeight - this.containerEl.offsetHeight;
+
+			const constrainedX = Math.max(0, Math.min(newX, maxX));
+			const constrainedY = Math.max(0, Math.min(newY, maxY));
+
+			this.containerEl.style.left = `${constrainedX}px`;
+			this.containerEl.style.top = `${constrainedY}px`;
+		}
+	};
+
+	/**
+	 * 处理音乐中心拖拽结束
+	 */
+	private handleHubDragEnd = (): void => {
+		this.isDragging = false;
+		this.containerEl.removeClass(CSS_CLASSES.IS_DRAGGING);
+
+		document.removeEventListener("mousemove", this.handleHubDragMove);
+		document.removeEventListener("mouseup", this.handleHubDragEnd);
+	};
+
+	/**
 	 * 清理资源
 	 */
 	cleanup(): void {
-		// 清理隐藏超时
-		if (this.hideTimeout) {
-			clearTimeout(this.hideTimeout);
-		}
-		
-		document.removeEventListener("click", this.handleDocumentClick, {
-			capture: true,
-		});
 		document.removeEventListener("mousemove", this.handleDragMove);
 		document.removeEventListener("mouseup", this.handleDragEnd);
+		document.removeEventListener("mousemove", this.handleHubDragMove);
+		document.removeEventListener("mouseup", this.handleHubDragEnd);
 
 		if (this.vinylPlayer) {
 			this.vinylPlayer.cleanup();
 		}
 
+		// 清理背景
+		this.containerEl.removeClass('has-background');
+		this.containerEl.style.removeProperty('--background-cover');
+
 		this.containerEl.remove();
 		this.events = {};
 	}
+
+	/**
+	 * 显示歌单选择器
+	 */
+	private showPlaylistSelector(): void {
+		// 获取当前歌单列表
+		const categories = this.events.onGetCategories?.() || [];
+		
+		// 如果选择器已存在，先移除
+		this.hidePlaylistSelector();
+		
+		// 创建选择器容器
+		const selectorContainer = this.containerEl.createEl("div", {
+			cls: "playlist-selector-container"
+		});
+
+		// 阻止选择器内部的点击事件冒泡
+		selectorContainer.addEventListener("click", (e) => {
+			e.stopPropagation();
+		});
+
+		// 创建选择器标题
+		const title = selectorContainer.createEl("div", {
+			cls: "playlist-selector-title",
+			text: "选择歌单"
+		});
+
+		// 创建歌单列表
+		const playlistList = selectorContainer.createEl("div", {
+			cls: "playlist-selector-list"
+		});
+
+		// 获取当前选中的歌单
+		const currentCategory = this.events.onGetCurrentCategory?.() || "all";
+
+		// 添加歌单选项
+		categories.forEach((category: { value: string; label: string }) => {
+			const item = playlistList.createEl("div", {
+				cls: `playlist-selector-item ${category.value === currentCategory ? "is-active" : ""}`,
+				text: category.label
+			});
+
+			item.addEventListener("click", () => {
+				this.events.onCategoryChange?.(category.value as any);
+				this.hidePlaylistSelector();
+			});
+
+			item.addEventListener("mouseenter", () => {
+				item.addClass("is-hovered");
+			});
+
+			item.addEventListener("mouseleave", () => {
+				item.removeClass("is-hovered");
+			});
+		});
+
+		// 点击外部关闭选择器
+		const closeHandler = (e: MouseEvent) => {
+			// 检查点击是否在选择器外部且不在按钮上
+			if (!selectorContainer.contains(e.target as Node) && 
+				!this.playlistToggleButton.contains(e.target as Node)) {
+				this.hidePlaylistSelector();
+				document.removeEventListener("click", closeHandler);
+			}
+		};
+
+		// 延迟添加点击事件，避免立即触发
+		setTimeout(() => {
+			document.addEventListener("click", closeHandler);
+		}, 100);
+
+		// 定位选择器
+		const buttonRect = this.playlistToggleButton.getBoundingClientRect();
+		const containerRect = this.containerEl.getBoundingClientRect();
+		
+		// 计算位置，确保选择器不超出容器边界
+		let leftPos = buttonRect.left - containerRect.left - 50; // 稍微左移以居中
+		const selectorWidth = 180; // 预估选择器宽度
+		const containerWidth = containerRect.width;
+		
+		// 确保选择器不超出左边界
+		if (leftPos < 10) {
+			leftPos = 10;
+		}
+		// 确保选择器不超出右边界
+		if (leftPos + selectorWidth > containerWidth - 10) {
+			leftPos = containerWidth - selectorWidth - 10;
+		}
+		
+		selectorContainer.style.position = "absolute";
+		selectorContainer.style.bottom = `${containerRect.bottom - buttonRect.top + 8}px`;
+		selectorContainer.style.left = `${leftPos}px`;
+		selectorContainer.style.zIndex = "1000";
+	}
+
+	/**
+	 * 隐藏歌单选择器
+	 */
+	private hidePlaylistSelector(): void {
+		const selector = this.containerEl.querySelector(".playlist-selector-container");
+		if (selector) {
+			selector.remove();
+		}
+	}
+
+	
 }
