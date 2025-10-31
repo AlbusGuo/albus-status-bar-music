@@ -40,7 +40,7 @@
 
 
 1. **下载插件文件**
-   - 访问 [GitHub Releases 页面](https://github.com/your-username/albus-status-bar-music/releases)
+   - 访问 [GitHub Releases 页面](https://github.com/AlbusGuo/albus-status-bar-music/releases)
    - 下载最新版本的插件文件到 Obsidian 插件目录
 
 2. **启用插件**
