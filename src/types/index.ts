@@ -19,6 +19,8 @@ export interface PluginSettings {
 	favorites: string[];
 	playbackMode: PlaybackMode;
 	metadata: Record<string, TrackMetadata>;
+	showControlButtons: boolean; // 是否显示状态栏控制按钮
+	closeHubOnClickOutside: boolean; // 点击外部是否关闭音乐中心
 }
 
 export type PlaybackMode = "loop" | "single" | "shuffle";

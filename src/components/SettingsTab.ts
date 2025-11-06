@@ -32,6 +32,9 @@ export class SettingsTab extends PluginSettingTab {
 		// 音乐文件夹设置
 		this.displayMusicFolderSetting();
 
+		// 界面设置
+		this.displayUISettings();
+
 		// 元数据统计
 		this.displayMetadataStats();
 		
@@ -69,7 +72,44 @@ export class SettingsTab extends PluginSettingTab {
 			});
 	}
 
-	
+	/**
+	 * 显示界面设置
+	 */
+	private displayUISettings(): void {
+		// 添加分组标题
+		this.containerEl.createEl("h3", { text: "界面设置" });
+
+		// 状态栏控制按钮显示设置
+		new Setting(this.containerEl)
+			.setName("显示状态栏控制按钮")
+			.setDesc("在状态栏显示上一首、播放/暂停、下一首按钮")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.settings.showControlButtons)
+					.onChange(async (value) => {
+						this.settings.showControlButtons = value;
+						await this.saveCallback();
+						// 通知主插件更新状态栏
+						this.plugin.updateStatusBarButtons();
+					});
+			});
+
+		// 点击外部关闭音乐中心设置
+		new Setting(this.containerEl)
+			.setName("点击外部关闭音乐中心")
+			.setDesc("启用后，点击音乐中心外部区域将自动关闭音乐中心")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.settings.closeHubOnClickOutside)
+					.onChange(async (value) => {
+						this.settings.closeHubOnClickOutside = value;
+						await this.saveCallback();
+						// 通知主插件更新音乐中心行为
+						this.plugin.updateMusicHubBehavior();
+					});
+			});
+	}
+
 
 	/**
 	 * 重新加载音乐库

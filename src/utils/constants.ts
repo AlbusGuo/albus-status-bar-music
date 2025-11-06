@@ -60,4 +60,6 @@ export const ICONS = {
 	TRASH: "trash",
 	LIST: "list",
 	TEXT: "type", // 歌词图标
+	VOLUME: "volume-2", // 音量图标
+	VOLUME_MUTE: "volume-x", // 静音图标
 } as const;

@@ -349,18 +349,14 @@
 	width: 100%;
 	height: 10px;
 	border-radius: 5px;
-	cursor: grab;
+	cursor: pointer;
 	display: flex;
 	align-items: center;
 	padding: 3px 0;
 }
 
 .hub-progress-container:active {
-	cursor: grabbing;
-}
-
-.hub-progress-container:hover .hub-progress-thumb {
-	opacity: 1;
+	cursor: pointer;
 }
 
 .hub-progress-container::before {
@@ -394,7 +390,7 @@
 	border: 2px solid var(--interactive-accent);
 	border-radius: 50%;
 	pointer-events: none;
-	opacity: 0;
+	opacity: 1;
 }
 
 .hub-time-display {
@@ -465,6 +461,110 @@
 .hub-favorite-button.is-favorite .svg-icon {
 	color: #ff4757 !important;
 	fill: #ff4757 !important;
+}
+
+/* 音量控制容器 */
+.hub-volume-control-container {
+	position: relative;
+	display: flex;
+	align-items: center;
+}
+
+/* 音量按钮样式 */
+.hub-volume-button {
+	background: none;
+	border: none;
+	cursor: pointer;
+	padding: 4px;
+	border-radius: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: transform 0.1s ease;
+	color: var(--text-on-accent) !important;
+}
+
+.hub-volume-button:hover {
+	transform: scale(1.1);
+}
+
+.hub-volume-button:active {
+	transform: scale(0.95);
+}
+
+.hub-volume-button .svg-icon {
+	width: 18px;
+	height: 18px;
+	color: inherit;
+}
+
+/* 音量滑块容器 */
+.hub-volume-slider-container {
+	position: absolute;
+	bottom: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	padding: 12px 8px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	z-index: 1000;
+	min-width: 40px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+}
+
+/* 音量滑块 */
+.hub-volume-slider {
+	-webkit-appearance: slider-vertical;
+	appearance: slider-vertical;
+	writing-mode: bt-lr;
+	width: 6px;
+	height: 100px;
+	background: linear-gradient(
+		to top,
+		var(--interactive-accent) 0%,
+		var(--interactive-accent) var(--volume-percent, 100%),
+		var(--background-modifier-border) var(--volume-percent, 100%),
+		var(--background-modifier-border) 100%
+	);
+	border-radius: 3px;
+	outline: none;
+	cursor: pointer;
+	transition: opacity 0.2s;
+}
+
+.hub-volume-slider::-webkit-slider-thumb {
+	-webkit-appearance: none;
+	appearance: none;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: var(--interactive-accent);
+	cursor: pointer;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+	transition: transform 0.1s ease;
+}
+
+.hub-volume-slider::-webkit-slider-thumb:hover {
+	transform: scale(1.2);
+}
+
+.hub-volume-slider::-moz-range-thumb {
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: var(--interactive-accent);
+	cursor: pointer;
+	border: none;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+	transition: transform 0.1s ease;
+}
+
+.hub-volume-slider::-moz-range-thumb:hover {
+	transform: scale(1.2);
 }
 
 /* 唱片切换容器 */

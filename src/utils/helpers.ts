@@ -6,6 +6,8 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	favorites: [],
 	playbackMode: PLAYBACK_MODES[0] as PlaybackMode,
 	metadata: {},
+	showControlButtons: true, // 默认显示控制按钮
+	closeHubOnClickOutside: false, // 默认不自动关闭音乐中心
 };
 
 /**

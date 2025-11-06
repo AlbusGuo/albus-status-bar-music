@@ -122,6 +122,9 @@ export default class StatusBarMusicPlugin extends Plugin {
 	private createUI(): void {
 		// 创建音乐中心组件
 		this.musicHub = new MusicHubComponent();
+		
+		// 应用音乐中心设置
+		this.updateMusicHubBehavior();
 
 		// 创建状态栏组件
 		const statusBarItem = this.addStatusBarItem();
@@ -139,6 +142,9 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 		// 更新状态栏显示当前状态
 		this.updateStatusBarAfterCreation();
+
+		// 应用按钮显示设置
+		this.updateStatusBarButtons();
 	}
 
 	/**
@@ -292,6 +298,10 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 		this.musicHub.on("onSeekToTime", (time: number) => {
 			this.audioPlayer.seekTo(time);
+		});
+
+		this.musicHub.on("onVolumeChange", (volume: number) => {
+			this.audioPlayer.setVolume(volume);
 		});
 
 		// 歌词服务事件 - 当前歌词行变化时更新状态栏
@@ -637,6 +647,24 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 */
 	get metadataManager() {
 		return (this.playlistManager as any).metadataManager;
+	}
+
+	/**
+	 * 更新状态栏按钮显示
+	 */
+	updateStatusBarButtons(): void {
+		if (this.statusBar) {
+			this.statusBar.setControlButtonsVisible(this.settings.showControlButtons);
+		}
+	}
+
+	/**
+	 * 更新音乐中心行为
+	 */
+	updateMusicHubBehavior(): void {
+		if (this.musicHub) {
+			this.musicHub.setCloseOnClickOutside(this.settings.closeHubOnClickOutside);
+		}
 	}
 
 	/**

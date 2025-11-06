@@ -227,6 +227,21 @@ export class StatusBarComponent {
 	}
 
 	/**
+	 * 显示或隐藏控制按钮
+	 */
+	setControlButtonsVisible(visible: boolean): void {
+		if (visible) {
+			this.prevButton.show();
+			this.playPauseButton.show();
+			this.nextButton.show();
+		} else {
+			this.prevButton.hide();
+			this.playPauseButton.hide();
+			this.nextButton.hide();
+		}
+	}
+
+	/**
 	 * 获取容器元素
 	 */
 	getElement(): HTMLElement {

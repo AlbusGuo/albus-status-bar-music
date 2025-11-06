@@ -26,12 +26,19 @@ export class MusicHubComponent {
 	private floatingLyricsComponent: LyricsComponent | null = null; // 悬浮歌词组件
 	private lyricsButton: HTMLButtonElement;
 	private lyricsContainer: HTMLElement;
+	private volumeButton: HTMLButtonElement;
+	private volumeSliderContainer: HTMLElement;
+	private volumeSlider: HTMLInputElement;
+	private currentVolume: number = 1; // 默认音量 100%
 
-	private isDragging = false;
+	private isProgressDragging = false; // 进度条拖拽状态
+	private isHubDragging = false; // 窗口拖拽状态
 	private isVisible = false;
 	private isFirstShow = true;
 	private dragOffset = { x: 0, y: 0 };
 	private dragHandle: HTMLElement | null = null;
+	private closeOnClickOutside = false; // 是否点击外部关闭
+	private boundHandleClickOutside: ((e: MouseEvent) => void) | null = null;
 
 	private events: {
 		onFavoriteToggle?: () => void;
@@ -50,6 +57,7 @@ export class MusicHubComponent {
 		onVinylPlayPause?: () => void;
 		onLyricsToggle?: (enableStatusBarLyrics: boolean) => void; // 修改：接收布尔参数
 		onSeekToTime?: (time: number) => void;
+		onVolumeChange?: (volume: number) => void;
 	} = {};
 
 	constructor() {
@@ -206,6 +214,34 @@ export class MusicHubComponent {
 			text: "--:-- / --:--",
 		});
 
+		// 音量控制容器
+		const volumeControlContainer = timeControlContainer.createEl("div", {
+			cls: "hub-volume-control-container",
+		});
+
+		// 音量按钮
+		this.volumeButton = volumeControlContainer.createEl("button", {
+			cls: "hub-control-button hub-volume-button",
+		});
+		setIcon(this.volumeButton, ICONS.VOLUME);
+
+		// 音量滑块容器（初始隐藏）
+		this.volumeSliderContainer = volumeControlContainer.createEl("div", {
+			cls: "hub-volume-slider-container",
+		});
+		this.volumeSliderContainer.hide();
+
+		// 音量滑块
+		this.volumeSlider = this.volumeSliderContainer.createEl("input", {
+			cls: "hub-volume-slider",
+			type: "range",
+			attr: {
+				min: "0",
+				max: "100",
+				value: "100",
+			},
+		});
+
 		// 收藏按钮（右侧）
 		this.favButton = timeControlContainer.createEl("button", {
 			cls: "hub-control-button hub-favorite-button",
@@ -237,6 +273,27 @@ export class MusicHubComponent {
 		// 歌词按钮事件
 		this.lyricsButton.addEventListener("click", () => {
 			this.toggleLyrics();
+		});
+
+		// 音量按钮事件
+		this.volumeButton.addEventListener("click", (e) => {
+			e.stopPropagation();
+			this.toggleVolumeSlider();
+		});
+
+		// 音量滑块事件
+		this.volumeSlider.addEventListener("input", () => {
+			const volume = parseInt(this.volumeSlider.value) / 100;
+			this.setVolume(volume);
+		});
+
+		// 点击其他地方关闭音量滑块
+		document.addEventListener("click", (e) => {
+			if (!this.volumeSliderContainer.contains(e.target as Node) && 
+				!this.volumeButton.contains(e.target as Node) &&
+				this.volumeSliderContainer.isShown()) {
+				this.volumeSliderContainer.hide();
+			}
 		});
 
 		// 播放列表切换按钮事件
@@ -278,8 +335,8 @@ export class MusicHubComponent {
 	 * 处理拖拽开始
 	 */
 	private handleDragStart = (e: MouseEvent): void => {
-		this.isDragging = true;
-		this.containerEl.addClass(CSS_CLASSES.IS_DRAGGING);
+		this.isProgressDragging = true;
+		this.progressContainer.addClass("is-dragging");
 
 		this.seek(e);
 
@@ -293,7 +350,7 @@ export class MusicHubComponent {
 	 * 处理拖拽移动
 	 */
 	private handleDragMove = (e: MouseEvent): void => {
-		if (this.isDragging) {
+		if (this.isProgressDragging) {
 			this.updateVisualProgress(e);
 		}
 	};
@@ -302,9 +359,9 @@ export class MusicHubComponent {
 	 * 处理拖拽结束
 	 */
 	private handleDragEnd = (e: MouseEvent): void => {
-		if (this.isDragging) {
-			this.isDragging = false;
-			this.containerEl.removeClass(CSS_CLASSES.IS_DRAGGING);
+		if (this.isProgressDragging) {
+			this.isProgressDragging = false;
+			this.progressContainer.removeClass("is-dragging");
 
 			this.seek(e);
 
@@ -416,6 +473,42 @@ export class MusicHubComponent {
 	}
 
 	/**
+	 * 切换音量滑块显示/隐藏
+	 */
+	private toggleVolumeSlider(): void {
+		if (this.volumeSliderContainer.isShown()) {
+			this.volumeSliderContainer.hide();
+		} else {
+			this.volumeSliderContainer.show();
+		}
+	}
+
+	/**
+	 * 设置音量
+	 */
+	private setVolume(volume: number): void {
+		this.currentVolume = volume;
+		this.volumeSlider.value = (volume * 100).toString();
+		
+		// 根据音量更新图标
+		if (volume === 0) {
+			setIcon(this.volumeButton, ICONS.VOLUME_MUTE);
+		} else {
+			setIcon(this.volumeButton, ICONS.VOLUME);
+		}
+		
+		// 触发音量变化事件
+		this.events.onVolumeChange?.(volume);
+	}
+
+	/**
+	 * 获取当前音量
+	 */
+	getVolume(): number {
+		return this.currentVolume;
+	}
+
+	/**
 	 * 注册事件监听器
 	 */
 	on(event: string, callback: (...args: any[]) => void): void {
@@ -480,6 +573,11 @@ export class MusicHubComponent {
 
 			this.isVisible = true;
 
+			// 如果启用了点击外部关闭，添加监听器
+			if (this.closeOnClickOutside) {
+				this.addClickOutsideListener();
+			}
+
 			// 如果是第一次显示，自动触发刷新
 			if (this.isFirstShow) {
 				this.isFirstShow = false;
@@ -500,6 +598,8 @@ export class MusicHubComponent {
 		this.containerEl.style.display = "none";
 		this.isVisible = false;
 		this.events.onHide?.();
+		// 移除点击外部监听器
+		this.removeClickOutsideListener();
 	}
 
 	/**
@@ -512,6 +612,54 @@ export class MusicHubComponent {
 		} else {
 			// Showing music hub (currently hidden)
 			this.show(anchorElement);
+		}
+	}
+
+	/**
+	 * 设置点击外部是否关闭
+	 */
+	setCloseOnClickOutside(enabled: boolean): void {
+		this.closeOnClickOutside = enabled;
+		
+		// 如果当前可见，根据设置添加或移除监听器
+		if (this.isVisible) {
+			if (enabled) {
+				this.addClickOutsideListener();
+			} else {
+				this.removeClickOutsideListener();
+			}
+		}
+	}
+
+	/**
+	 * 添加点击外部监听器
+	 */
+	private addClickOutsideListener(): void {
+		if (!this.boundHandleClickOutside) {
+			this.boundHandleClickOutside = (e: MouseEvent) => {
+				const target = e.target as HTMLElement;
+				// 检查点击是否在音乐中心外部
+				if (!this.containerEl.contains(target) && 
+					!target.closest('.albus-status-bar-music-statusbar')) {
+					this.hide();
+				}
+			};
+		}
+		
+		// 延迟添加监听器，避免立即触发
+		setTimeout(() => {
+			if (this.closeOnClickOutside && this.boundHandleClickOutside) {
+				document.addEventListener('click', this.boundHandleClickOutside);
+			}
+		}, 100);
+	}
+
+	/**
+	 * 移除点击外部监听器
+	 */
+	private removeClickOutsideListener(): void {
+		if (this.boundHandleClickOutside) {
+			document.removeEventListener('click', this.boundHandleClickOutside);
 		}
 	}
 
@@ -674,7 +822,7 @@ export class MusicHubComponent {
 	 * 更新进度显示
 	 */
 	updateProgress(currentTime: number, duration: number): void {
-		if (this.isDragging) return;
+		if (this.isProgressDragging) return;
 
 		if (!isFinite(duration) || isNaN(duration)) {
 			this.timeDisplay.setText("--:-- / --:--");
@@ -878,7 +1026,7 @@ export class MusicHubComponent {
 	 * 处理音乐中心拖拽开始
 	 */
 	private handleHubDragStart = (e: MouseEvent): void => {
-		this.isDragging = true;
+		this.isHubDragging = true;
 		this.containerEl.addClass(CSS_CLASSES.IS_DRAGGING);
 
 		const rect = this.containerEl.getBoundingClientRect();
@@ -895,7 +1043,7 @@ export class MusicHubComponent {
 	 * 处理音乐中心拖拽移动
 	 */
 	private handleHubDragMove = (e: MouseEvent): void => {
-		if (this.isDragging) {
+		if (this.isHubDragging) {
 			const newX = e.clientX - this.dragOffset.x;
 			const newY = e.clientY - this.dragOffset.y;
 
@@ -915,7 +1063,7 @@ export class MusicHubComponent {
 	 * 处理音乐中心拖拽结束
 	 */
 	private handleHubDragEnd = (): void => {
-		this.isDragging = false;
+		this.isHubDragging = false;
 		this.containerEl.removeClass(CSS_CLASSES.IS_DRAGGING);
 
 		document.removeEventListener("mousemove", this.handleHubDragMove);
