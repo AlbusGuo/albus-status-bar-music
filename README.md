@@ -4,7 +4,6 @@
 
 ![ObsidianPlugin](https://img.shields.io/badge/Obsidian-Plugin-red?logo=obsidian)
 ![Version](https://img.shields.io/badge/Version-0.0.5-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
 ![release](https://img.shields.io/github/downloads/AlbusGuo/albus-status-bar-music/total?style=flat&label=Total%20Downloads)
 
 ## 🌟 为什么选择 Albus Status Bar Music？
@@ -30,7 +29,7 @@
 - 支持多种音频格式：MP3、FLAC、WAV、M4A、OGG
 - 三种播放模式：列表循环、单曲循环、随机播放
 - 红心歌单：收藏喜爱的歌曲
-- 音量控制和进度调节
+- 进度调节
 
 ## 📦 安装指南
 
@@ -126,10 +125,6 @@
 ### 🎨 **贡献代码**
 - Fork 项目并创建 Pull Request
 - 遵循项目的代码规范
-
-## 📄 许可证
-
-本项目采用 [MIT 许可证](LICENSE)，你可以自由使用、修改和分发。
 
 ## 🙏 致谢
 
