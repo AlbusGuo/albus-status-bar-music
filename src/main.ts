@@ -3,15 +3,17 @@ import { MusicHubComponent } from "./components/MusicHubComponent";
 import { SettingsTab } from "./components/SettingsTab";
 import { StatusBarComponent } from "./components/StatusBarComponent";
 import { AudioPlayerService } from "./services/AudioPlayerService";
+import { LyricsService } from "./services/LyricsService";
 import { PlaylistManager } from "./services/PlaylistManager";
 import "./styles/styles";
-import { PlaybackMode, PluginSettings, MusicTrack } from "./types";
+import { MusicTrack, PlaybackMode, PluginSettings } from "./types";
 import { DEFAULT_SETTINGS } from "./utils/helpers";
 
 export default class StatusBarMusicPlugin extends Plugin {
 	settings: PluginSettings;
 	private playlistManager: PlaylistManager;
 	private audioPlayer: AudioPlayerService;
+	private lyricsService: LyricsService;
 	private statusBar: StatusBarComponent | null = null;
 	private musicHub: MusicHubComponent;
 	private settingsTab: SettingsTab;
@@ -19,11 +21,11 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 	async onload() {
 		try {
-// 加载设置
-		await this.loadSettings();
-		
-		// 迁移旧设置到新设置格式
-		this.migrateSettings();			// 初始化服务
+			// 加载设置
+			await this.loadSettings();
+
+			// 迁移旧设置到新设置格式
+			this.migrateSettings(); // 初始化服务
 			this.initializeServices();
 
 			// 创建UI组件
@@ -41,33 +43,43 @@ export default class StatusBarMusicPlugin extends Plugin {
 			// 添加设置页面
 			this.addSettingTab(this.settingsTab);
 
-// 异步加载播放列表并刷新元数据
-		setTimeout(async () => {
-			try {
-				// 首先初始化元数据管理器（从data.json加载已有数据）
-				const currentSettings = this.settings;
-				this.playlistManager.initializeMetadata(currentSettings);
-				
-				// 创建状态栏（无论是否有音乐文件都要创建）
-				this.createStatusBar();
-				
-				// 检查是否有音乐文件夹路径
-				if (currentSettings.musicFolderPath && currentSettings.musicFolderPath.trim() !== "") {
-					// 有音乐文件夹路径，加载播放列表
-					await this.playlistManager.loadFullPlaylist();
-					
-					// 刷新元数据（重新扫描文件，解决blob URL失效）
-					await this.playlistManager.refreshMetadata();
-					await this.saveSettings();
-					
-					console.log('StatusBarMusicPlugin: Music library loaded successfully');
-				} else {
-					console.log('StatusBarMusicPlugin: No music folder set, waiting for user configuration');
+			// 异步加载播放列表并刷新元数据
+			setTimeout(async () => {
+				try {
+					// 首先初始化元数据管理器（从data.json加载已有数据）
+					const currentSettings = this.settings;
+					this.playlistManager.initializeMetadata(currentSettings);
+
+					// 创建状态栏（无论是否有音乐文件都要创建）
+					this.createStatusBar();
+
+					// 检查是否有音乐文件夹路径
+					if (
+						currentSettings.musicFolderPath &&
+						currentSettings.musicFolderPath.trim() !== ""
+					) {
+						// 有音乐文件夹路径，加载播放列表
+						await this.playlistManager.loadFullPlaylist();
+
+						// 刷新元数据（重新扫描文件，解决blob URL失效）
+						await this.playlistManager.refreshMetadata();
+						await this.saveSettings();
+
+						console.log(
+							"StatusBarMusicPlugin: Music library loaded successfully"
+						);
+					} else {
+						console.log(
+							"StatusBarMusicPlugin: No music folder set, waiting for user configuration"
+						);
+					}
+				} catch (error) {
+					console.error(
+						"StatusBarMusicPlugin: Failed to load playlist or refresh metadata",
+						error
+					);
 				}
-			} catch (error) {
-				console.error('StatusBarMusicPlugin: Failed to load playlist or refresh metadata', error);
-			}
-		}, 100);
+			}, 100);
 		} catch (error) {
 			// 静默处理错误，避免干扰用户体验
 		}
@@ -77,8 +89,13 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 * 初始化服务
 	 */
 	private initializeServices(): void {
-		this.playlistManager = new PlaylistManager(this.app, this.settings, () => this.settings);
+		this.playlistManager = new PlaylistManager(
+			this.app,
+			this.settings,
+			() => this.settings
+		);
 		this.audioPlayer = new AudioPlayerService();
+		this.lyricsService = new LyricsService(this.app);
 
 		// 设置元数据管理器的保存回调
 		const metadataManager = (this.playlistManager as any).metadataManager;
@@ -88,24 +105,15 @@ export default class StatusBarMusicPlugin extends Plugin {
 			});
 		}
 
-		this.settingsTab = new SettingsTab(
-			this.app,
-			this,
-			this.settings,
-			() => this.saveSettings()
+		this.settingsTab = new SettingsTab(this.app, this, this.settings, () =>
+			this.saveSettings()
 		);
 	}
-
-	
 
 	/**
 	 * 注册命令
 	 */
-	private registerCommands(): void {
-		
-	}
-
-	
+	private registerCommands(): void {}
 
 	/**
 	 * 创建UI组件
@@ -113,7 +121,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 	private createUI(): void {
 		// 创建音乐中心组件
 		this.musicHub = new MusicHubComponent();
-		
+
 		// 创建状态栏组件
 		const statusBarItem = this.addStatusBarItem();
 		this.statusBar = new StatusBarComponent(statusBarItem);
@@ -124,10 +132,10 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 */
 	private createStatusBar(): void {
 		if (!this.statusBar) return;
-		
+
 		// 设置状态栏事件监听器
 		this.setupStatusBarEvents();
-		
+
 		// 更新状态栏显示当前状态
 		this.updateStatusBarAfterCreation();
 	}
@@ -179,7 +187,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 			this.statusBar.updateTrack(currentTrack);
 		}
 		this.statusBar.updatePlayState(isPlaying);
-		
+
 		// 更新播放列表
 		this.updatePlaylist();
 	}
@@ -221,8 +229,6 @@ export default class StatusBarMusicPlugin extends Plugin {
 			this.playlistManager.setSearchQuery(query);
 		});
 
-		
-
 		this.musicHub.on("onCategoryChange", (category: string) => {
 			this.playlistManager.setCategory(category as any);
 		});
@@ -263,6 +269,15 @@ export default class StatusBarMusicPlugin extends Plugin {
 			}
 		});
 
+		// 歌词相关事件
+		this.musicHub.on("onLyricsToggle", () => {
+			// 歌词切换时的处理（如果需要的话）
+		});
+
+		this.musicHub.on("onSeekToTime", (time: number) => {
+			this.audioPlayer.seekTo(time);
+		});
+
 		// 播放列表管理器事件
 		this.playlistManager.on("onTrackChange", (track) => {
 			if (this.statusBar) {
@@ -274,6 +289,9 @@ export default class StatusBarMusicPlugin extends Plugin {
 			// 不在这里调用 updatePlaylist()，避免高频重新渲染
 			// 只需要更新当前播放状态，而不是重新渲染整个列表
 			this.musicHub.updateCurrentPlayingTrack(track);
+
+			// 加载歌词
+			this.loadLyricsForTrack(track);
 		});
 
 		this.playlistManager.on("onPlaylistUpdate", () => {
@@ -306,6 +324,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 		this.audioPlayer.on("onTimeUpdate", () => {
 			this.updateProgress();
+			this.updateLyricsTime();
 		});
 
 		this.audioPlayer.on("onLoadStart", () => {
@@ -326,10 +345,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 				this.statusBar.showLoading(false);
 			}
 		});
-
-		}
-
-	
+	}
 
 	/**
 	 * 更新音乐中心的左右唱片
@@ -337,18 +353,26 @@ export default class StatusBarMusicPlugin extends Plugin {
 	private updateHubSideVinyls(): void {
 		const currentTrack = this.playlistManager.getCurrentTrack();
 		const playlist = this.playlistManager.getViewPlaylist();
-		
+
 		if (!currentTrack || !playlist || playlist.length <= 1) {
 			this.musicHub.updateSideVinyls(null, null);
 			return;
 		}
 
-		const currentIndex = playlist.findIndex(track => track.path === currentTrack.path);
-		
+		const currentIndex = playlist.findIndex(
+			(track) => track.path === currentTrack.path
+		);
+
 		// 获取上一首和下一首
-		const prevTrack = currentIndex > 0 ? playlist[currentIndex - 1] : playlist[playlist.length - 1];
-		const nextTrack = currentIndex < playlist.length - 1 ? playlist[currentIndex + 1] : playlist[0];
-		
+		const prevTrack =
+			currentIndex > 0
+				? playlist[currentIndex - 1]
+				: playlist[playlist.length - 1];
+		const nextTrack =
+			currentIndex < playlist.length - 1
+				? playlist[currentIndex + 1]
+				: playlist[0];
+
 		this.musicHub.updateSideVinyls(prevTrack, nextTrack);
 	}
 
@@ -386,6 +410,36 @@ export default class StatusBarMusicPlugin extends Plugin {
 		} catch (error) {
 			// 播放失败处理
 		}
+	}
+
+	/**
+	 * 为指定曲目加载歌词
+	 */
+	private async loadLyricsForTrack(track: MusicTrack | null): Promise<void> {
+		if (!track) {
+			this.musicHub.updateLyrics(null);
+			return;
+		}
+
+		try {
+			const lyrics = await this.lyricsService.loadLyricsForTrack(track);
+			this.musicHub.updateLyrics(lyrics);
+		} catch (error) {
+			console.warn("Failed to load lyrics for track:", track.name, error);
+			this.musicHub.updateLyrics(null);
+		}
+	}
+
+	/**
+	 * 更新歌词当前时间
+	 */
+	private updateLyricsTime(): void {
+		const currentTime = this.audioPlayer.getCurrentTime();
+		this.lyricsService.updateCurrentTime(currentTime);
+
+		// 更新UI中的当前歌词行
+		const currentLineIndex = this.lyricsService.getCurrentLineIndex();
+		this.musicHub.updateCurrentLyricsLine(currentLineIndex);
 	}
 
 	/**
@@ -470,14 +524,21 @@ export default class StatusBarMusicPlugin extends Plugin {
 		if (this.playlistUpdateTimeout) {
 			clearTimeout(this.playlistUpdateTimeout);
 		}
-		
+
 		// 设置新的定时器，100ms后执行
 		this.playlistUpdateTimeout = setTimeout(() => {
 			const playlist = this.playlistManager.getViewPlaylist();
 			const currentTrack = this.playlistManager.getCurrentTrack();
-			const metadataManager = (this.playlistManager as any).metadataManager;
-			const isMetadataInitialized = metadataManager ? metadataManager.isFullyInitialized() : false;
-			this.musicHub.renderPlaylist(playlist, currentTrack, isMetadataInitialized);
+			const metadataManager = (this.playlistManager as any)
+				.metadataManager;
+			const isMetadataInitialized = metadataManager
+				? metadataManager.isFullyInitialized()
+				: false;
+			this.musicHub.renderPlaylist(
+				playlist,
+				currentTrack,
+				isMetadataInitialized
+			);
 		}, 100);
 	}
 
@@ -498,16 +559,15 @@ export default class StatusBarMusicPlugin extends Plugin {
 	async saveSettings(): Promise<void> {
 		// 确保元数据管理器的最新数据已导出到设置
 		if (this.playlistManager) {
-			const metadataManager = (this.playlistManager as any).metadataManager;
+			const metadataManager = (this.playlistManager as any)
+				.metadataManager;
 			if (metadataManager && metadataManager.needsSave()) {
 				const metadataExport = metadataManager.exportToSettings();
 				this.settings.metadata = metadataExport.metadata;
 			}
 		}
-		
-		await this.saveData(this.settings);
-		
 
+		await this.saveData(this.settings);
 
 		// 更新设置页面的设置引用
 		if (this.settingsTab) {
@@ -522,14 +582,12 @@ export default class StatusBarMusicPlugin extends Plugin {
 		try {
 			// 清空播放列表管理器中的缓存
 			this.playlistManager.clearMetadataCache();
-			
+
 			// 清空设置中的元数据
 			this.settings.metadata = {};
-			
+
 			// 保存设置
 			await this.saveSettings();
-			
-	
 		} catch (error) {
 			// 元数据缓存清理失败处理
 			throw error;
@@ -557,6 +615,11 @@ export default class StatusBarMusicPlugin extends Plugin {
 			this.audioPlayer.cleanup();
 		}
 
+		// 清理歌词服务
+		if (this.lyricsService) {
+			this.lyricsService.cleanup();
+		}
+
 		// 清理播放列表管理器
 		if (this.playlistManager) {
 			this.playlistManager.cleanup();
@@ -577,8 +640,12 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 */
 	private migrateSettings(): void {
 		// 兼容旧版本设置：如果有多个音乐文件夹，使用第一个作为主文件夹
-		if ((this.settings as any).musicFolderPaths && Array.isArray((this.settings as any).musicFolderPaths)) {
-			const oldPaths = (this.settings as any).musicFolderPaths as string[];
+		if (
+			(this.settings as any).musicFolderPaths &&
+			Array.isArray((this.settings as any).musicFolderPaths)
+		) {
+			const oldPaths = (this.settings as any)
+				.musicFolderPaths as string[];
 			if (oldPaths.length > 0 && !this.settings.musicFolderPath) {
 				this.settings.musicFolderPath = oldPaths[0];
 				this.saveSettings();

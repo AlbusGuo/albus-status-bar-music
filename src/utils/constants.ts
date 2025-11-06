@@ -59,4 +59,5 @@ export const ICONS = {
 	SHUFFLE: "shuffle",
 	TRASH: "trash",
 	LIST: "list",
+	TEXT: "type", // 歌词图标
 } as const;

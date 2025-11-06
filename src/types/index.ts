@@ -11,6 +11,7 @@ export interface TrackMetadata {
 	artist: string;
 	album: string;
 	cover: string | null;
+	lyrics?: string | null; // 歌词内容
 }
 
 export interface PluginSettings {
@@ -52,4 +53,31 @@ export interface ID3v2Frame {
 	size: number;
 	flags: number;
 	data: Uint8Array;
+}
+
+// 歌词相关类型定义
+export interface LyricLine {
+	time: number; // 时间（秒）
+	text: string; // 歌词文本
+	translation?: string; // 翻译（可选）
+}
+
+export interface ParsedLyrics {
+	lines: LyricLine[];
+	title?: string;
+	artist?: string;
+	album?: string;
+	offset?: number; // 偏移量（毫秒）
+}
+
+export interface LyricsDisplayOptions {
+	showTranslation: boolean;
+	highlightCurrentLine: boolean;
+	autoScroll: boolean;
+	fontSize: number;
+}
+
+export interface LyricsEvents {
+	onLyricsLoaded: (lyrics: ParsedLyrics | null) => void;
+	onCurrentLineChange: (lineIndex: number) => void;
 }
