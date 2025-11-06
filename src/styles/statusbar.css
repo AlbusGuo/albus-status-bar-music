@@ -36,8 +36,7 @@
 	border-radius: 50%;
 	position: relative;
 	background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%);
-	box-shadow: 
-		0 2px 6px rgba(0, 0, 0, 0.4),
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4),
 		inset 0 1px 2px rgba(255, 255, 255, 0.1);
 	transition: all 0.2s ease;
 	display: flex;
@@ -47,14 +46,18 @@
 }
 
 .albus-status-bar-music-vinyl-disc::before {
-	content: '';
+	content: "";
 	position: absolute;
 	top: 15%;
 	left: 20%;
 	width: 25%;
 	height: 25%;
 	border-radius: 50%;
-	background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+	background: radial-gradient(
+		circle,
+		rgba(255, 255, 255, 0.2) 0%,
+		transparent 70%
+	);
 	z-index: 2;
 	pointer-events: none;
 }
@@ -68,16 +71,14 @@
 	height: 8px;
 	border-radius: 50%;
 	background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%);
-	box-shadow: 
-		0 1px 3px rgba(0, 0, 0, 0.3),
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3),
 		inset 0 1px 1px rgba(255, 255, 255, 0.3);
 	z-index: 3;
 }
 
 .albus-status-bar-music-vinyl-button:hover .albus-status-bar-music-vinyl-disc {
 	transform: scale(1.05);
-	box-shadow: 
-		0 3px 8px rgba(0, 0, 0, 0.5),
+	box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5),
 		inset 0 1px 2px rgba(255, 255, 255, 0.15);
 }
 
@@ -160,6 +161,17 @@
 	animation: scroll-text-animation 10s linear infinite;
 }
 
+/* 歌词模式样式 */
+.albus-status-bar-music-track-button span.lyrics-mode {
+	color: var(--text-accent);
+	font-style: italic;
+}
+
+/* 歌词滚动 - 比普通文字滚动更慢 */
+.albus-status-bar-music-track-button span.lyrics-scrolling.is-scrolling {
+	animation: scroll-lyrics-animation 15s linear infinite;
+}
+
 @keyframes scroll-text-animation {
 	0% {
 		transform: translateX(0);
@@ -171,6 +183,24 @@
 		transform: translateX(calc(-100% + var(--button-width, 150px) - 20px));
 	}
 	90% {
+		transform: translateX(0);
+	}
+	100% {
+		transform: translateX(0);
+	}
+}
+
+@keyframes scroll-lyrics-animation {
+	0% {
+		transform: translateX(0);
+	}
+	30% {
+		transform: translateX(calc(-100% + var(--button-width, 150px) - 20px));
+	}
+	70% {
+		transform: translateX(calc(-100% + var(--button-width, 150px) - 20px));
+	}
+	95% {
 		transform: translateX(0);
 	}
 	100% {

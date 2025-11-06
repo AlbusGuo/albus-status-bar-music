@@ -1,0 +1,283 @@
+/* 歌词容器样式 */
+.music-lyrics-container {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	background: var(--background-secondary);
+	border-radius: 8px;
+	overflow: hidden;
+	position: relative;
+}
+
+.music-lyrics-container.hidden {
+	display: none;
+}
+
+/* 歌词内容区域 */
+.music-lyrics-content {
+	flex: 1;
+	overflow-y: auto;
+	padding: 16px 20px;
+	scrollbar-width: thin;
+	scrollbar-color: var(--scrollbar-thumb-bg) var(--scrollbar-bg);
+}
+
+.music-lyrics-content::-webkit-scrollbar {
+	width: 6px;
+}
+
+.music-lyrics-content::-webkit-scrollbar-track {
+	background: var(--scrollbar-bg);
+	border-radius: 3px;
+}
+
+.music-lyrics-content::-webkit-scrollbar-thumb {
+	background: var(--scrollbar-thumb-bg);
+	border-radius: 3px;
+}
+
+.music-lyrics-content::-webkit-scrollbar-thumb:hover {
+	background: var(--scrollbar-active-thumb-bg);
+}
+
+/* 歌词头部信息 */
+.music-lyrics-header {
+	text-align: center;
+	margin-bottom: 24px;
+	padding-bottom: 16px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.music-lyrics-title {
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--text-normal);
+	margin-bottom: 8px;
+}
+
+.music-lyrics-artist {
+	font-size: 14px;
+	color: var(--text-muted);
+}
+
+/* 歌词行容器 */
+.music-lyrics-lines {
+	line-height: 1.8;
+}
+
+/* 单行歌词 */
+.music-lyrics-line {
+	margin: 8px 0;
+	padding: 8px 12px;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+	position: relative;
+}
+
+.music-lyrics-line:hover {
+	background: var(--background-modifier-hover);
+	transform: translateX(4px);
+}
+
+.music-lyrics-line.current {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-weight: 600;
+	transform: scale(1.02);
+	box-shadow: 0 4px 12px var(--interactive-accent-hover);
+}
+
+.music-lyrics-line.current::before {
+	content: "";
+	position: absolute;
+	left: -4px;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 4px;
+	height: 60%;
+	background: var(--text-on-accent);
+	border-radius: 2px;
+	animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.6;
+	}
+}
+
+/* 歌词文本 */
+.music-lyrics-text {
+	font-size: inherit;
+	line-height: inherit;
+	color: inherit;
+	word-wrap: break-word;
+	white-space: pre-wrap;
+}
+
+/* 翻译文本 */
+.music-lyrics-translation {
+	font-size: 0.9em;
+	color: var(--text-faint);
+	margin-top: 4px;
+	font-style: italic;
+	opacity: 0.8;
+}
+
+.music-lyrics-line.current .music-lyrics-translation {
+	color: var(--text-on-accent);
+	opacity: 0.9;
+}
+
+/* 无歌词消息 */
+.music-lyrics-message {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	color: var(--text-muted);
+	font-style: italic;
+	font-size: 16px;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+	.music-lyrics-content {
+		padding: 12px 16px;
+	}
+
+	.music-lyrics-title {
+		font-size: 16px;
+	}
+
+	.music-lyrics-line {
+		margin: 6px 0;
+		padding: 6px 10px;
+	}
+}
+
+/* 暗色主题优化 */
+.theme-dark .music-lyrics-container {
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.theme-dark .music-lyrics-line.current {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
+}
+
+/* 亮色主题优化 */
+.theme-light .music-lyrics-container {
+	background: var(--background-primary);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.theme-light .music-lyrics-line.current {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.2);
+}
+
+/* 歌词控制按钮 */
+.music-lyrics-controls {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 8px 12px;
+	background: var(--background-primary);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.music-lyrics-control-btn {
+	padding: 4px 8px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	border-radius: 4px;
+	transition: all 0.2s ease;
+	font-size: 12px;
+}
+
+.music-lyrics-control-btn:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.music-lyrics-control-btn.active {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+/* 字体大小调节 */
+.music-lyrics-font-size {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.music-lyrics-font-btn {
+	width: 24px;
+	height: 24px;
+	border: none;
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+	border-radius: 50%;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 14px;
+	font-weight: bold;
+	transition: all 0.2s ease;
+}
+
+.music-lyrics-font-btn:hover {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.music-lyrics-font-size-display {
+	font-size: 12px;
+	color: var(--text-muted);
+	min-width: 24px;
+	text-align: center;
+}
+
+/* 加载状态 */
+.music-lyrics-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	color: var(--text-muted);
+}
+
+.music-lyrics-loading::after {
+	content: "";
+	width: 20px;
+	height: 20px;
+	border: 2px solid var(--background-modifier-border);
+	border-top: 2px solid var(--interactive-accent);
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+	margin-left: 8px;
+}
+
+@keyframes spin {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
