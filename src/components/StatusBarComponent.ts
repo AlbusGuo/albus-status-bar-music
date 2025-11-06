@@ -10,6 +10,9 @@ export class StatusBarComponent {
 	private trackButton: HTMLButtonElement;
 	private trackNameEl: HTMLSpanElement;
 	private progressEl: HTMLDivElement;
+	private currentTrack: MusicTrack | null = null;
+	private isLyricsMode: boolean = false;
+	private currentLyricsText: string = "";
 
 	private events: {
 		onPrevious?: () => void;
@@ -104,15 +107,48 @@ export class StatusBarComponent {
 	 * 更新当前曲目
 	 */
 	updateTrack(track: MusicTrack | null): void {
-		if (!track) {
-			this.trackNameEl.setText("播放列表");
-			this.trackNameEl.removeClass(CSS_CLASSES.IS_SCROLLING);
-			return;
-		}
+		this.currentTrack = track;
+		this.updateDisplayText();
+	}
 
-		const displayName = track.metadata?.title || track.name;
-		this.trackNameEl.setText(displayName);
+	/**
+	 * 更新显示文本（根据模式显示歌曲名或歌词）
+	 */
+	private updateDisplayText(): void {
+		if (this.isLyricsMode && this.currentLyricsText) {
+			// 歌词模式显示当前歌词
+			this.trackNameEl.setText(this.currentLyricsText);
+			this.trackNameEl.addClass("lyrics-mode");
+		} else if (this.currentTrack) {
+			// 正常模式显示歌曲名
+			const displayName =
+				this.currentTrack.metadata?.title || this.currentTrack.name;
+			this.trackNameEl.setText(displayName);
+			this.trackNameEl.removeClass("lyrics-mode");
+		} else {
+			// 无曲目时显示默认文本
+			this.trackNameEl.setText("播放列表");
+			this.trackNameEl.removeClass("lyrics-mode");
+		}
 		this.checkAndApplyScrolling();
+	}
+
+	/**
+	 * 设置歌词显示模式
+	 */
+	setLyricsMode(enabled: boolean): void {
+		this.isLyricsMode = enabled;
+		this.updateDisplayText();
+	}
+
+	/**
+	 * 更新当前歌词文本
+	 */
+	updateLyricsText(lyricsText: string): void {
+		this.currentLyricsText = lyricsText || "";
+		if (this.isLyricsMode) {
+			this.updateDisplayText();
+		}
 	}
 
 	/**
@@ -137,8 +173,15 @@ export class StatusBarComponent {
 					"--button-width",
 					`${buttonWidth}px`
 				);
+				// 为歌词模式添加更慢的滚动速度
+				if (this.isLyricsMode) {
+					this.trackNameEl.addClass("lyrics-scrolling");
+				} else {
+					this.trackNameEl.removeClass("lyrics-scrolling");
+				}
 			} else {
 				this.trackNameEl.removeClass(CSS_CLASSES.IS_SCROLLING);
+				this.trackNameEl.removeClass("lyrics-scrolling");
 			}
 		});
 	}

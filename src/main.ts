@@ -18,6 +18,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 	private musicHub: MusicHubComponent;
 	private settingsTab: SettingsTab;
 	private playlistUpdateTimeout: NodeJS.Timeout | null = null;
+	private isLyricsDisplayEnabled: boolean = false;
 
 	async onload() {
 		try {
@@ -271,11 +272,47 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 		// 歌词相关事件
 		this.musicHub.on("onLyricsToggle", () => {
-			// 歌词切换时的处理（如果需要的话）
+			// 切换歌词显示状态
+			this.isLyricsDisplayEnabled = !this.isLyricsDisplayEnabled;
+
+			// 更新状态栏显示模式
+			if (this.statusBar) {
+				this.statusBar.setLyricsMode(this.isLyricsDisplayEnabled);
+			}
+
+			// 如果启用歌词模式，立即更新当前歌词
+			if (this.isLyricsDisplayEnabled) {
+				const currentLyricsText =
+					this.lyricsService.getCurrentLineText();
+				if (this.statusBar) {
+					this.statusBar.updateLyricsText(currentLyricsText);
+				}
+			}
 		});
 
 		this.musicHub.on("onSeekToTime", (time: number) => {
 			this.audioPlayer.seekTo(time);
+		});
+
+		// 歌词服务事件 - 当前歌词行变化时更新状态栏
+		this.lyricsService.on("onCurrentLineChange", (lineIndex: number) => {
+			if (this.isLyricsDisplayEnabled && this.statusBar) {
+				const currentLyricsText =
+					this.lyricsService.getCurrentLineText();
+				this.statusBar.updateLyricsText(currentLyricsText);
+			}
+		});
+
+		// 歌词服务事件 - 歌词加载完成
+		this.lyricsService.on("onLyricsLoaded", (lyrics) => {
+			// 当歌词加载完成且处于歌词模式时，显示第一行歌词或清空显示
+			if (this.isLyricsDisplayEnabled && this.statusBar) {
+				const initialText =
+					lyrics && lyrics.lines.length > 0
+						? lyrics.lines[0].text
+						: "";
+				this.statusBar.updateLyricsText(initialText);
+			}
 		});
 
 		// 播放列表管理器事件

@@ -30,20 +30,20 @@ export class LyricsComponent extends Component {
 	private createLyricsBar(): void {
 		// 创建独立的歌词栏，添加到 body
 		this.lyricsBar = document.body.createDiv({
-			cls: "music-lyrics-bar"
+			cls: "music-lyrics-bar",
 		});
 		this.lyricsBar.hide();
 
 		// 拖动手柄
 		this.dragHandle = this.lyricsBar.createDiv({
 			cls: "lyrics-drag-handle",
-			text: "⋮⋮"
+			text: "⋮⋮",
 		});
 
 		// 歌词文本容器
 		this.lyricsText = this.lyricsBar.createDiv({
 			cls: "lyrics-text-container",
-			text: "暂无歌词"
+			text: "暂无歌词",
 		});
 
 		// 设置初始位置
@@ -66,12 +66,16 @@ export class LyricsComponent extends Component {
 	 */
 	private setupEventListeners(): void {
 		// 拖拽功能
-		this.dragHandle.addEventListener("mousedown", this.handleDragStart.bind(this));
-		
+		this.dragHandle.addEventListener(
+			"mousedown",
+			this.handleDragStart.bind(this)
+		);
+
 		// 双击歌词文本跳转到当前位置
 		this.lyricsText.addEventListener("dblclick", () => {
 			if (this.currentLyrics && this.currentLineIndex >= 0) {
-				const currentLine = this.currentLyrics.lines[this.currentLineIndex];
+				const currentLine =
+					this.currentLyrics.lines[this.currentLineIndex];
 				this.emit("seek-to-time", currentLine.time);
 			}
 		});
@@ -94,7 +98,7 @@ export class LyricsComponent extends Component {
 
 		document.addEventListener("mousemove", this.handleDragMove.bind(this));
 		document.addEventListener("mouseup", this.handleDragEnd.bind(this));
-		
+
 		this.lyricsBar.addClass("dragging");
 		e.preventDefault();
 	}
@@ -125,7 +129,10 @@ export class LyricsComponent extends Component {
 	 */
 	private handleDragEnd(): void {
 		this.isDragging = false;
-		document.removeEventListener("mousemove", this.handleDragMove.bind(this));
+		document.removeEventListener(
+			"mousemove",
+			this.handleDragMove.bind(this)
+		);
 		document.removeEventListener("mouseup", this.handleDragEnd.bind(this));
 		this.lyricsBar.removeClass("dragging");
 	}
@@ -143,7 +150,7 @@ export class LyricsComponent extends Component {
 	 * 渲染歌词
 	 */
 	private renderLyrics(): void {
-		this.lyricsEl.empty();
+		this.lyricsText.empty();
 
 		if (!this.currentLyrics || this.currentLyrics.lines.length === 0) {
 			this.showNoLyricsMessage();
@@ -151,7 +158,7 @@ export class LyricsComponent extends Component {
 		}
 
 		// 创建歌词内容容器
-		const contentEl = this.lyricsEl.createDiv({
+		const contentEl = this.lyricsText.createDiv({
 			cls: "music-lyrics-content",
 		});
 
@@ -225,7 +232,7 @@ export class LyricsComponent extends Component {
 
 		// 移除之前的高亮
 		if (this.currentLineIndex >= 0) {
-			const prevLine = this.lyricsEl.querySelector(
+			const prevLine = this.lyricsText.querySelector(
 				`[data-index="${this.currentLineIndex}"]`
 			);
 			if (prevLine) {
@@ -237,7 +244,7 @@ export class LyricsComponent extends Component {
 
 		// 添加新的高亮
 		if (lineIndex >= 0 && this.displayOptions.highlightCurrentLine) {
-			const currentLine = this.lyricsEl.querySelector(
+			const currentLine = this.lyricsText.querySelector(
 				`[data-index="${lineIndex}"]`
 			) as HTMLElement;
 			if (currentLine) {
@@ -255,7 +262,7 @@ export class LyricsComponent extends Component {
 	 * 滚动到指定行
 	 */
 	private scrollToLine(lineEl: HTMLElement): void {
-		const container = this.lyricsEl.querySelector(
+		const container = this.lyricsText.querySelector(
 			".music-lyrics-content"
 		) as HTMLElement;
 		if (!container) return;
@@ -314,7 +321,7 @@ export class LyricsComponent extends Component {
 	 */
 	setFontSize(size: number): void {
 		this.displayOptions.fontSize = Math.max(10, Math.min(24, size));
-		const contentEl = this.lyricsEl.querySelector(
+		const contentEl = this.lyricsText.querySelector(
 			".music-lyrics-content"
 		) as HTMLElement;
 		if (contentEl) {
@@ -326,14 +333,44 @@ export class LyricsComponent extends Component {
 	 * 显示/隐藏歌词面板
 	 */
 	toggle(): void {
-		this.lyricsEl.toggleClass("hidden", !this.lyricsEl.hasClass("hidden"));
+		this.lyricsText.toggleClass(
+			"hidden",
+			!this.lyricsText.hasClass("hidden")
+		);
 	}
 
 	/**
 	 * 清理资源
 	 */
 	onunload(): void {
-		this.lyricsEl?.remove();
+		this.lyricsText?.remove();
+	}
+
+	/**
+	 * 显示歌词栏
+	 */
+	show(): void {
+		this.isVisible = true;
+		this.lyricsBar.show();
+	}
+
+	/**
+	 * 隐藏歌词栏
+	 */
+	hide(): void {
+		this.isVisible = false;
+		this.lyricsBar.hide();
+	}
+
+	/**
+	 * 显示无歌词消息
+	 */
+	private showNoLyricsMessage(): void {
+		this.lyricsText.empty();
+		this.lyricsText.createDiv({
+			cls: "no-lyrics-message",
+			text: "暂无歌词",
+		});
 	}
 
 	/**

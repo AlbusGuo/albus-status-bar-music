@@ -358,7 +358,7 @@ export class MusicHubComponent {
 
 		// 如果还没有歌词组件，创建一个
 		if (!this.lyricsComponent) {
-			this.lyricsComponent = new LyricsComponent(this.lyricsContainer);
+			this.lyricsComponent = new LyricsComponent();
 
 			// 监听歌词组件的时间跳转事件
 			this.lyricsContainer.addEventListener(
