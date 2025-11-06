@@ -23,6 +23,7 @@ export class MusicHubComponent {
 	private playlistEl: HTMLUListElement;
 	private vinylPlayer: VinylPlayer;
 	private lyricsComponent: LyricsComponent | null = null;
+	private floatingLyricsComponent: LyricsComponent | null = null; // 悬浮歌词组件
 	private lyricsButton: HTMLButtonElement;
 	private lyricsContainer: HTMLElement;
 
@@ -47,7 +48,7 @@ export class MusicHubComponent {
 		onTrackSelect?: (track: MusicTrack) => void;
 		onHide?: () => void;
 		onVinylPlayPause?: () => void;
-		onLyricsToggle?: () => void;
+		onLyricsToggle?: (enableStatusBarLyrics: boolean) => void; // 修改：接收布尔参数
 		onSeekToTime?: (time: number) => void;
 	} = {};
 
@@ -335,57 +336,72 @@ export class MusicHubComponent {
 
 	/**
 	 * 切换歌词显示
+	 * 逻辑：悬浮歌词 和 状态栏歌词 互斥显示
+	 * 第一次点击：显示悬浮歌词，关闭状态栏歌词显示
+	 * 第二次点击：关闭悬浮歌词，显示状态栏歌词
 	 */
 	private toggleLyrics(): void {
-		const isVisible = !this.lyricsContainer.hasClass("hidden");
-
-		if (isVisible) {
-			this.hideLyrics();
+		// 检查悬浮歌词是否显示
+		const isFloatingVisible = this.floatingLyricsComponent?.isVisible() || false;
+		
+		if (isFloatingVisible) {
+			// 悬浮歌词正在显示，关闭悬浮歌词，启用状态栏歌词
+			this.hideFloatingLyrics();
+			this.events.onLyricsToggle?.(true); // 传递 true 表示启用状态栏歌词
 		} else {
-			this.showLyrics();
+			// 悬浮歌词未显示，显示悬浮歌词，关闭状态栏歌词
+			this.showFloatingLyrics();
+			this.events.onLyricsToggle?.(false); // 传递 false 表示禁用状态栏歌词
 		}
-
-		this.events.onLyricsToggle?.();
 	}
 
 	/**
-	 * 显示歌词
+	 * 显示悬浮歌词
 	 */
-	private showLyrics(): void {
-		this.lyricsContainer.removeClass("hidden");
-		this.lyricsContainer.show();
+	private showFloatingLyrics(): void {
 		this.lyricsButton.addClass("active");
-
-		// 如果还没有歌词组件，创建一个
-		if (!this.lyricsComponent) {
-			this.lyricsComponent = new LyricsComponent();
-
-			// 监听歌词组件的时间跳转事件
-			this.lyricsContainer.addEventListener(
-				"lyrics-seek-to-time",
-				(event: CustomEvent) => {
-					const time = event.detail[0];
-					this.events.onSeekToTime?.(time);
-				}
-			);
+		
+		// 创建悬浮歌词组件（如果还没有）
+		if (!this.floatingLyricsComponent) {
+			this.floatingLyricsComponent = new LyricsComponent();
+			
+			// 监听悬浮歌词的时间跳转事件
+			const floatingBar = document.querySelector(".music-lyrics-bar");
+			if (floatingBar) {
+				floatingBar.addEventListener(
+					"lyrics-seek-to-time",
+					((event: CustomEvent) => {
+						const time = event.detail[0];
+						this.events.onSeekToTime?.(time);
+					}) as EventListener
+				);
+			}
 		}
+
+		// 同步歌词数据（从 lyricsService 获取）
+		// 注意：这里不从 lyricsComponent 获取，因为它用于 Hub 内部显示
+		// 实际歌词数据会通过 updateLyrics 方法同步过来
+		this.floatingLyricsComponent.show();
 	}
 
 	/**
-	 * 隐藏歌词
+	 * 隐藏悬浮歌词
 	 */
-	private hideLyrics(): void {
-		this.lyricsContainer.addClass("hidden");
-		this.lyricsContainer.hide();
+	private hideFloatingLyrics(): void {
 		this.lyricsButton.removeClass("active");
+		
+		if (this.floatingLyricsComponent) {
+			this.floatingLyricsComponent.hide();
+		}
 	}
 
 	/**
 	 * 更新歌词内容
 	 */
 	updateLyrics(lyrics: any): void {
-		if (this.lyricsComponent) {
-			this.lyricsComponent.setLyrics(lyrics);
+		// 更新悬浮歌词组件（无论是否可见，确保切歌后数据同步）
+		if (this.floatingLyricsComponent) {
+			this.floatingLyricsComponent.setLyrics(lyrics);
 		}
 	}
 
@@ -393,8 +409,9 @@ export class MusicHubComponent {
 	 * 更新当前歌词行
 	 */
 	updateCurrentLyricsLine(lineIndex: number): void {
-		if (this.lyricsComponent) {
-			this.lyricsComponent.updateCurrentLine(lineIndex);
+		// 更新悬浮歌词组件（无论是否可见，确保数据同步）
+		if (this.floatingLyricsComponent) {
+			this.floatingLyricsComponent.updateCurrentLine(lineIndex);
 		}
 	}
 

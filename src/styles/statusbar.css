@@ -164,7 +164,7 @@
 /* 歌词模式样式 */
 .albus-status-bar-music-track-button span.lyrics-mode {
 	color: var(--text-accent);
-	font-style: italic;
+	font-style: normal;
 }
 
 /* 歌词滚动 - 比普通文字滚动更慢 */

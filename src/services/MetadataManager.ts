@@ -74,7 +74,8 @@ initializeFromSettings(settings: PluginSettings): void {
 					title: metadata.title,
 					artist: metadata.artist,
 					album: metadata.album,
-					cover: validCover // 只保留有效的封面数据
+					cover: validCover, // 只保留有效的封面数据
+					lyrics: metadata.lyrics || null // 保留歌词数据
 				};
 				this.cache.set(path, fullMetadata);
 				this.processedTracks++;
@@ -202,7 +203,8 @@ initializeFromSettings(settings: PluginSettings): void {
 						title: existingMetadata.title,
 						artist: existingMetadata.artist,
 						album: existingMetadata.album || "未知专辑",
-						cover: existingMetadata.cover || null
+						cover: existingMetadata.cover || null,
+						lyrics: existingMetadata.lyrics || null // 保留歌词数据
 					};
 					
 					this.cache.set(file.path, metadata);
@@ -221,7 +223,8 @@ initializeFromSettings(settings: PluginSettings): void {
 				title: file.basename,
 				artist: "未知艺术家",
 				album: "未知专辑",
-				cover: null
+				cover: null,
+				lyrics: null // 添加歌词字段
 			};
 			this.cache.set(file.path, defaultMetadata);
 		}

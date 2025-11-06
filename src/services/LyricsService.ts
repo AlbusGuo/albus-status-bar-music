@@ -169,10 +169,17 @@ export class LyricsService {
 			);
 			if (timeMatches) {
 				const [, minutes, seconds, milliseconds, text] = timeMatches;
+				
+				// 正确处理毫秒：如果是2位数（如.56），按百分之一秒处理；如果是3位数（如.560），按千分之一秒处理
+				let ms = milliseconds;
+				if (ms.length === 2) {
+					ms = ms + "0"; // 56 -> 560
+				}
+				
 				const time =
 					parseInt(minutes, 10) * 60 +
 					parseInt(seconds, 10) +
-					parseInt(milliseconds.padEnd(3, "0"), 10) / 1000;
+					parseInt(ms, 10) / 1000;
 
 				lines.push({
 					time,
@@ -213,15 +220,21 @@ export class LyricsService {
 			return;
 		}
 
-		// 考虑偏移量
-		const adjustedTime =
-			currentTime + (this.currentLyrics.offset || 0) / 1000;
+		// 考虑偏移量（毫秒转秒）
+		const offset = (this.currentLyrics.offset || 0) / 1000;
+		const adjustedTime = currentTime + offset;
 
 		// 查找当前时间对应的歌词行
+		// 从前往后找，找到第一个时间小于等于当前时间的歌词行
 		let newLineIndex = -1;
-		for (let i = this.currentLyrics.lines.length - 1; i >= 0; i--) {
-			if (adjustedTime >= this.currentLyrics.lines[i].time) {
+		
+		for (let i = 0; i < this.currentLyrics.lines.length; i++) {
+			const line = this.currentLyrics.lines[i];
+			// 如果这一行的时间小于等于当前时间
+			if (line.time <= adjustedTime) {
 				newLineIndex = i;
+			} else {
+				// 一旦找到时间大于当前时间的行，就停止查找
 				break;
 			}
 		}

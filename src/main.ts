@@ -271,17 +271,17 @@ export default class StatusBarMusicPlugin extends Plugin {
 		});
 
 		// 歌词相关事件
-		this.musicHub.on("onLyricsToggle", () => {
-			// 切换歌词显示状态
-			this.isLyricsDisplayEnabled = !this.isLyricsDisplayEnabled;
+		this.musicHub.on("onLyricsToggle", (enableStatusBarLyrics: boolean) => {
+			// 设置状态栏歌词显示状态
+			this.isLyricsDisplayEnabled = enableStatusBarLyrics;
 
 			// 更新状态栏显示模式
 			if (this.statusBar) {
-				this.statusBar.setLyricsMode(this.isLyricsDisplayEnabled);
+				this.statusBar.setLyricsMode(enableStatusBarLyrics);
 			}
 
-			// 如果启用歌词模式，立即更新当前歌词
-			if (this.isLyricsDisplayEnabled) {
+			// 如果启用状态栏歌词模式，立即更新当前歌词
+			if (enableStatusBarLyrics) {
 				const currentLyricsText =
 					this.lyricsService.getCurrentLineText();
 				if (this.statusBar) {
@@ -296,11 +296,15 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 		// 歌词服务事件 - 当前歌词行变化时更新状态栏
 		this.lyricsService.on("onCurrentLineChange", (lineIndex: number) => {
+			// 更新状态栏歌词
 			if (this.isLyricsDisplayEnabled && this.statusBar) {
 				const currentLyricsText =
 					this.lyricsService.getCurrentLineText();
 				this.statusBar.updateLyricsText(currentLyricsText);
 			}
+			
+			// 更新悬浮歌词
+			this.musicHub.updateCurrentLyricsLine(lineIndex);
 		});
 
 		// 歌词服务事件 - 歌词加载完成
@@ -473,10 +477,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 	private updateLyricsTime(): void {
 		const currentTime = this.audioPlayer.getCurrentTime();
 		this.lyricsService.updateCurrentTime(currentTime);
-
-		// 更新UI中的当前歌词行
-		const currentLineIndex = this.lyricsService.getCurrentLineIndex();
-		this.musicHub.updateCurrentLyricsLine(currentLineIndex);
+		// 不再在这里直接更新 UI，改为依赖 onCurrentLineChange 事件
 	}
 
 	/**
