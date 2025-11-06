@@ -1,6 +1,5 @@
-import { App, TFile } from "obsidian";
+import { App } from "obsidian";
 import { LyricLine, LyricsEvents, MusicTrack, ParsedLyrics } from "../types";
-import { normalizePath } from "../utils/helpers";
 
 export class LyricsService {
 	private app: App;
@@ -46,13 +45,8 @@ export class LyricsService {
 		}
 
 		try {
-			// 首先尝试从元数据获取歌词
-			let lyrics = await this.getLyricsFromMetadata(track);
-
-			// 如果元数据中没有歌词，尝试从同名 LRC 文件获取
-			if (!lyrics) {
-				lyrics = await this.getLyricsFromLrcFile(track);
-			}
+			// 从音乐文件元数据中获取歌词
+			const lyrics = await this.getLyricsFromMetadata(track);
 
 			this.currentLyrics = lyrics;
 			this.currentLineIndex = -1;
@@ -85,36 +79,6 @@ export class LyricsService {
 			return this.parseLyrics(track.metadata.lyrics);
 		} catch (error) {
 			console.warn("Failed to parse lyrics from metadata:", error);
-			return null;
-		}
-	}
-
-	/**
-	 * 从同名 LRC 文件获取歌词
-	 */
-	private async getLyricsFromLrcFile(
-		track: MusicTrack
-	): Promise<ParsedLyrics | null> {
-		try {
-			// 构造 LRC 文件路径
-			const trackPath = normalizePath(track.path);
-			const lrcPath = trackPath.replace(/\.[^.]+$/, ".lrc");
-
-			// 检查 LRC 文件是否存在
-			const lrcFile = this.app.vault.getAbstractFileByPath(lrcPath);
-			if (!(lrcFile instanceof TFile)) {
-				return null;
-			}
-
-			// 读取 LRC 文件内容
-			const lrcContent = await this.app.vault.read(lrcFile);
-			return this.parseLyrics(lrcContent);
-		} catch (error) {
-			console.warn(
-				"Failed to load LRC file for track:",
-				track.name,
-				error
-			);
 			return null;
 		}
 	}
