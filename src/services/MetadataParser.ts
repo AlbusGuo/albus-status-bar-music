@@ -214,41 +214,53 @@ export class MetadataParser {
 	private compressImageInNode(picture: mm.IPicture): string | null {
 		try {
 			const imageSizeKB = picture.data.length / 1024;
-			
+
 			// 对于Node.js环境，我们采用更宽松的策略：
 			// 1. 检查原始数据大小和格式
-			const isJpeg = picture.format === 'jpeg' || picture.format === 'jpg';
-			const isPng = picture.format === 'png';
-			const isWebp = picture.format === 'webp';
-			
+			const isJpeg =
+				picture.format === "jpeg" || picture.format === "jpg";
+			const isPng = picture.format === "png";
+			const isWebp = picture.format === "webp";
+
 			// 2. JPEG格式通常压缩得更好，可以接受更大的尺寸
 			if (isJpeg && imageSizeKB <= 1500) {
-				console.log(`Accepting JPEG image (${imageSizeKB.toFixed(1)}KB)`);
+				console.log(
+					`Accepting JPEG image (${imageSizeKB.toFixed(1)}KB)`
+				);
 				return this.createDataUrl(picture);
 			}
-			
+
 			// 3. WebP格式也有不错的压缩比
 			if (isWebp && imageSizeKB <= 1200) {
-				console.log(`Accepting WebP image (${imageSizeKB.toFixed(1)}KB)`);
+				console.log(
+					`Accepting WebP image (${imageSizeKB.toFixed(1)}KB)`
+				);
 				return this.createDataUrl(picture);
 			}
-			
+
 			// 4. PNG格式通常较大，限制更严格
 			if (isPng && imageSizeKB <= 1000) {
-				console.log(`Accepting PNG image (${imageSizeKB.toFixed(1)}KB)`);
+				console.log(
+					`Accepting PNG image (${imageSizeKB.toFixed(1)}KB)`
+				);
 				return this.createDataUrl(picture);
 			}
-			
+
 			// 5. 其他格式或超过限制的，尝试创建但给出警告
 			if (imageSizeKB <= 2048) {
-				console.log(`Large image (${imageSizeKB.toFixed(1)}KB ${picture.format}), processing anyway`);
+				console.log(
+					`Large image (${imageSizeKB.toFixed(1)}KB ${
+						picture.format
+					}), processing anyway`
+				);
 				return this.createDataUrl(picture);
 			}
-			
+
 			// 6. 太大的图片放弃处理
-			console.log(`Image too large (${imageSizeKB.toFixed(1)}KB), skipping`);
+			console.log(
+				`Image too large (${imageSizeKB.toFixed(1)}KB), skipping`
+			);
 			return null;
-			
 		} catch (error) {
 			console.warn("Failed to process image in Node.js:", error);
 			return null;
