@@ -10,7 +10,7 @@ permissions:
     discussions: write
 
 env:
-    PLUGIN_ID: obsidian-plugin-starter # 插件ID
+    PLUGIN_ID: albus-status-bar-music # 插件ID
 
 jobs:
     build:
