@@ -1,6 +1,6 @@
 # 🎵 Albus Status Bar Music
 
-> 在 Obsidian 状态栏享受音乐，让知识创作与美妙旋律相伴
+> 源项目: https://github.com/Laevin/obsidian-vault-radio
 
 ![ObsidianPlugin](https://img.shields.io/badge/Obsidian-Plugin-red?logo=obsidian)
 ![Version](https://img.shields.io/badge/Version-0.2.0-blue)
