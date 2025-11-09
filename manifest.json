@@ -4,7 +4,7 @@
 	"version": "0.2.0",
 	"minAppVersion": "0.15.0",
 	"description": "状态栏音乐播放器",
-	"author": "Albus",
+	"author": "Albus & RavenHogWarts",
 	"authorUrl": "https://github.com/AlbusGuo",
 	"isDesktopOnly": true
 }
