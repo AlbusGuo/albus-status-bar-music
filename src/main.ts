@@ -122,7 +122,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 	private createUI(): void {
 		// 创建音乐中心组件
 		this.musicHub = new MusicHubComponent();
-		
+
 		// 应用音乐中心设置
 		this.updateMusicHubBehavior();
 
@@ -312,7 +312,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 					this.lyricsService.getCurrentLineText();
 				this.statusBar.updateLyricsText(currentLyricsText);
 			}
-			
+
 			// 更新悬浮歌词
 			this.musicHub.updateCurrentLyricsLine(lineIndex);
 		});
@@ -340,6 +340,13 @@ export default class StatusBarMusicPlugin extends Plugin {
 			// 不在这里调用 updatePlaylist()，避免高频重新渲染
 			// 只需要更新当前播放状态，而不是重新渲染整个列表
 			this.musicHub.updateCurrentPlayingTrack(track);
+
+			// 预加载曲目到AudioPlayerService（不自动播放）
+			if (track) {
+				this.audioPlayer.loadTrack(track).catch((error) => {
+					console.warn("Failed to preload track:", error);
+				});
+			}
 
 			// 加载歌词
 			this.loadLyricsForTrack(track);
@@ -505,9 +512,32 @@ export default class StatusBarMusicPlugin extends Plugin {
 				return;
 			}
 
+			// 检查AudioPlayer是否已加载当前曲目
+			const audioCurrentTrack = this.audioPlayer.getCurrentTrack();
+			if (
+				!audioCurrentTrack ||
+				audioCurrentTrack.path !== currentTrack.path
+			) {
+				// 如果AudioPlayer中的曲目与当前曲目不一致，先加载曲目
+				await this.audioPlayer.loadTrack(currentTrack);
+			}
+
 			await this.audioPlayer.togglePlayPause();
 		} catch (error) {
-			// 播放暂停失败处理
+			console.warn("Failed to toggle play/pause:", error);
+			// 播放失败时尝试重新加载曲目
+			const currentTrack = this.playlistManager.getCurrentTrack();
+			if (currentTrack) {
+				try {
+					await this.audioPlayer.loadTrack(currentTrack);
+					await this.audioPlayer.play();
+				} catch (retryError) {
+					console.error(
+						"Failed to retry play after error:",
+						retryError
+					);
+				}
+			}
 		}
 	}
 
@@ -654,7 +684,9 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 */
 	updateStatusBarButtons(): void {
 		if (this.statusBar) {
-			this.statusBar.setControlButtonsVisible(this.settings.showControlButtons);
+			this.statusBar.setControlButtonsVisible(
+				this.settings.showControlButtons
+			);
 		}
 	}
 
@@ -663,7 +695,9 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 */
 	updateMusicHubBehavior(): void {
 		if (this.musicHub) {
-			this.musicHub.setCloseOnClickOutside(this.settings.closeHubOnClickOutside);
+			this.musicHub.setCloseOnClickOutside(
+				this.settings.closeHubOnClickOutside
+			);
 		}
 	}
 
