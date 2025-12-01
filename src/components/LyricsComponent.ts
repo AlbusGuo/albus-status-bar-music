@@ -257,7 +257,7 @@ export class LyricsComponent extends Component {
 	}
 
 	/**
-	 * 渲染悬浮歌词（最多显示两行）
+	 * 渲染悬浮歌词（三行滚动模式）
 	 */
 	private renderFloatingLyrics(): void {
 		const linesEl = this.lyricsText.createDiv({
@@ -269,41 +269,59 @@ export class LyricsComponent extends Component {
 		}
 
 		const totalLines = this.currentLyrics.lines.length;
+		const prevIndex = this.currentLineIndex - 1;
+		const nextIndex = this.currentLineIndex + 1;
 		
-		// 如果还没开始播放或没有到第一句（currentLineIndex === -1）
-		if (this.currentLineIndex === -1) {
-			// 显示第一句作为"预备"，第二句作为"下一句"
-			if (totalLines > 0) {
-				const firstLine = this.currentLyrics.lines[0];
-				this.createLyricsLine(linesEl, firstLine, 0, false);
-			}
-			if (totalLines > 1) {
-				const secondLine = this.currentLyrics.lines[1];
-				this.createLyricsLine(linesEl, secondLine, 1, false);
-			}
+		// 渲染三行：上一行、当前行、下一行
+		// 上一行（已播放的，半透明）
+		if (prevIndex >= 0 && prevIndex < totalLines) {
+			const prevLine = this.currentLyrics.lines[prevIndex];
+			this.createLyricsLine(linesEl, prevLine, prevIndex, false, true);
 		} else {
-			// 正在播放中
-			// 第一行：当前播放的歌词（强调显示）
-			if (this.currentLineIndex < totalLines) {
-				const currentLine = this.currentLyrics.lines[this.currentLineIndex];
-				this.createLyricsLine(linesEl, currentLine, this.currentLineIndex, true);
-			}
-			
-			// 第二行：下一句歌词（预备显示）
-			const nextIndex = this.currentLineIndex + 1;
-			if (nextIndex < totalLines) {
-				const nextLine = this.currentLyrics.lines[nextIndex];
-				this.createLyricsLine(linesEl, nextLine, nextIndex, false);
-			} else if (this.currentLineIndex < totalLines) {
-				// 如果是最后一行，第二行显示为空或提示
-				const emptyLine = linesEl.createDiv({
-					cls: "music-lyrics-line empty",
-				});
-				emptyLine.createDiv({
-					cls: "music-lyrics-text",
-					text: "♪",
-				});
-			}
+			// 占位空行
+			const emptyLine = linesEl.createDiv({
+				cls: "music-lyrics-line empty",
+			});
+			emptyLine.createDiv({
+				cls: "music-lyrics-text",
+				text: "",
+			});
+		}
+		
+		// 当前行（正在播放的，高亮）
+		if (this.currentLineIndex >= 0 && this.currentLineIndex < totalLines) {
+			const currentLine = this.currentLyrics.lines[this.currentLineIndex];
+			this.createLyricsLine(linesEl, currentLine, this.currentLineIndex, true);
+		} else if (this.currentLineIndex === -1 && totalLines > 0) {
+			// 还没开始，显示第一句
+			const firstLine = this.currentLyrics.lines[0];
+			this.createLyricsLine(linesEl, firstLine, 0, false);
+		} else {
+			const emptyLine = linesEl.createDiv({
+				cls: "music-lyrics-line empty",
+			});
+			emptyLine.createDiv({
+				cls: "music-lyrics-text",
+				text: "",
+			});
+		}
+		
+		// 下一行（即将播放的，半透明）
+		if (nextIndex >= 0 && nextIndex < totalLines) {
+			const nextLine = this.currentLyrics.lines[nextIndex];
+			this.createLyricsLine(linesEl, nextLine, nextIndex, false);
+		} else if (this.currentLineIndex === -1 && totalLines > 1) {
+			// 还没开始，显示第二句
+			const secondLine = this.currentLyrics.lines[1];
+			this.createLyricsLine(linesEl, secondLine, 1, false);
+		} else {
+			const emptyLine = linesEl.createDiv({
+				cls: "music-lyrics-line empty",
+			});
+			emptyLine.createDiv({
+				cls: "music-lyrics-text",
+				text: "♪",
+			});
 		}
 
 		// 应用字体大小
@@ -361,10 +379,15 @@ export class LyricsComponent extends Component {
 		container: HTMLElement,
 		line: { text: string; time: number; translation?: string },
 		index: number,
-		isCurrent: boolean
+		isCurrent: boolean,
+		isPrev: boolean = false
 	): HTMLElement {
+		let cls = "music-lyrics-line";
+		if (isCurrent) cls += " current";
+		if (isPrev) cls += " prev";
+		
 		const lineEl = container.createDiv({
-			cls: isCurrent ? "music-lyrics-line current" : "music-lyrics-line",
+			cls: cls,
 			attr: {
 				"data-time": line.time.toString(),
 				"data-index": index.toString(),
@@ -442,33 +465,70 @@ export class LyricsComponent extends Component {
 	 * 带动画的更新悬浮歌词
 	 */
 	private updateFloatingLyricsWithAnimation(prevIndex: number, newIndex: number): void {
-		const container = this.lyricsText.querySelector(".music-lyrics-lines") as HTMLElement;
-		
-		if (!container) {
-			// 如果容器不存在，直接重新渲染
+		if (!this.currentLyrics || this.currentLyrics.lines.length === 0) {
 			this.lyricsText.empty();
 			this.renderFloatingLyrics();
 			return;
 		}
 
-		// 给容器添加退出动画
-		container.addClass("lyrics-exit");
+		const container = this.lyricsText.querySelector(".music-lyrics-lines") as HTMLElement;
 		
-		// 等待退出动画完成后重新渲染
-		setTimeout(() => {
+		if (!container) {
 			this.lyricsText.empty();
 			this.renderFloatingLyrics();
+			return;
+		}
+
+		const totalLines = this.currentLyrics.lines.length;
+		
+		// 先添加第四行（新的下一行）在底部
+		const nextNextIdx = newIndex + 1;
+		if (nextNextIdx >= 0 && nextNextIdx < totalLines) {
+			const nextLine = this.currentLyrics.lines[nextNextIdx];
+			this.createLyricsLine(container, nextLine, nextNextIdx, false);
+		} else if (newIndex === -1 && totalLines > 1) {
+			const secondLine = this.currentLyrics.lines[1];
+			this.createLyricsLine(container, secondLine, 1, false);
+		} else {
+			const emptyLine = container.createDiv({
+				cls: "music-lyrics-line empty",
+			});
+			emptyLine.createDiv({ cls: "music-lyrics-text", text: "♪" });
+		}
+		
+		// 触发向上滑动动画
+		requestAnimationFrame(() => {
+			container.addClass("lyrics-slide-up");
+		});
+		
+		// 动画完成后处理
+		setTimeout(() => {
+			if (!this.currentLyrics) return;
 			
-			// 添加进入动画
-			const newContainer = this.lyricsText.querySelector(".music-lyrics-lines") as HTMLElement;
-			if (newContainer) {
-				newContainer.addClass("lyrics-enter");
-				// 移除动画类
-				setTimeout(() => {
-					newContainer.removeClass("lyrics-enter");
-				}, 400);
+			// 移除第一行
+			const firstLine = container.querySelector(".music-lyrics-line");
+			if (firstLine) {
+				firstLine.remove();
 			}
-		}, 300);
+			
+			// 更新样式类
+			const lines = container.querySelectorAll(".music-lyrics-line");
+			if (lines.length >= 3) {
+				lines[0].removeClass("current");
+				lines[0].addClass("prev");
+				
+				lines[1].removeClass("prev");
+				lines[1].addClass("current");
+				
+				lines[2].removeClass("current");
+				lines[2].removeClass("prev");
+			}
+			
+			// 立即重置位置（无过渡）
+			container.removeClass("lyrics-slide-up");
+			
+			container.style.fontSize = `${this.displayOptions.fontSize}px`;
+		}, 500);
 	}
 
 	/**
