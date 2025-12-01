@@ -309,7 +309,8 @@ export class MusicHubComponent {
 			}
 		});
 
-		this.modeButton.addEventListener("click", () => {
+		this.modeButton.addEventListener("click", (e) => {
+			e.stopPropagation(); // 防止事件冒泡导致关闭播放器
 			this.events.onModeToggle?.();
 		});
 

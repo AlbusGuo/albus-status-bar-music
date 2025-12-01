@@ -1,7 +1,7 @@
 {
 	"id": "albus-status-bar-music",
 	"name": "Status Bar Music",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"minAppVersion": "0.15.0",
 	"description": "状态栏音乐播放器",
 	"author": "Albus & RavenHogWarts",
