@@ -58,6 +58,7 @@ export class MusicHubComponent {
 		onLyricsToggle?: (enableStatusBarLyrics: boolean) => void; // 修改：接收布尔参数
 		onSeekToTime?: (time: number) => void;
 		onVolumeChange?: (volume: number) => void;
+		onFloatingLyricsShow?: () => void; // 悬浮歌词显示时触发
 	} = {};
 
 	constructor() {
@@ -440,6 +441,9 @@ export class MusicHubComponent {
 		// 注意：这里不从 lyricsComponent 获取，因为它用于 Hub 内部显示
 		// 实际歌词数据会通过 updateLyrics 方法同步过来
 		this.floatingLyricsComponent.show();
+		
+		// 触发悬浮歌词显示事件，通知主插件同步当前播放时间
+		this.events.onFloatingLyricsShow?.();
 	}
 
 	/**

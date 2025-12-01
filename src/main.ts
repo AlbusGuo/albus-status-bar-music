@@ -304,6 +304,21 @@ export default class StatusBarMusicPlugin extends Plugin {
 			this.audioPlayer.setVolume(volume);
 		});
 
+		// 悬浮歌词显示事件 - 立即同步当前歌词数据和播放时间
+		this.musicHub.on("onFloatingLyricsShow", () => {
+			// 1. 同步歌词数据
+			const currentLyrics = this.lyricsService.getCurrentLyrics();
+			this.musicHub.updateLyrics(currentLyrics);
+			
+			// 2. 获取当前播放时间并更新到歌词服务
+			const currentTime = this.audioPlayer.getCurrentTime();
+			this.lyricsService.updateCurrentTime(currentTime);
+			
+			// 3. 立即同步当前行索引到悬浮歌词组件
+			const currentLineIndex = this.lyricsService.getCurrentLineIndex();
+			this.musicHub.updateCurrentLyricsLine(currentLineIndex);
+		});
+
 		// 歌词服务事件 - 当前歌词行变化时更新状态栏
 		this.lyricsService.on("onCurrentLineChange", (lineIndex: number) => {
 			// 更新状态栏歌词
