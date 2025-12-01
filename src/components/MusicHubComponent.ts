@@ -490,6 +490,9 @@ export class MusicHubComponent {
 		this.currentVolume = volume;
 		this.volumeSlider.value = (volume * 100).toString();
 		
+		// 更新滑块填充色的 CSS 变量
+		this.volumeSlider.style.setProperty('--volume-fill', `${volume * 100}%`);
+		
 		// 根据音量更新图标
 		if (volume === 0) {
 			setIcon(this.volumeButton, ICONS.VOLUME_MUTE);
