@@ -226,6 +226,8 @@ export default class StatusBarMusicPlugin extends Plugin {
 		// 黑胶唱片播放器事件
 		this.musicHub.on("onVinylPlayPause", () => {
 			this.togglePlayPause();
+			// 滚动到当前播放的歌曲
+			this.musicHub.scrollToCurrentTrack();
 		});
 
 		this.musicHub.on("onCategoryChange", (category: string) => {

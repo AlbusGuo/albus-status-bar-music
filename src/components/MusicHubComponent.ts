@@ -763,7 +763,7 @@ export class MusicHubComponent {
 	/**
 	 * 只更新当前播放状态，不重新渲染整个列表
 	 */
-	updateCurrentPlayingTrack(track: MusicTrack | null): void {
+	updateCurrentPlayingTrack(track: MusicTrack | null, scrollToTrack: boolean = false): void {
 		// 移除所有播放状态
 		this.playlistEl
 			.querySelectorAll(`.${CSS_CLASSES.IS_PLAYING}`)
@@ -775,10 +775,33 @@ export class MusicHubComponent {
 		if (track) {
 			const currentItem = this.playlistEl.querySelector(
 				`[data-track-id="${track.id}"]`
-			);
+			) as HTMLElement;
 			if (currentItem) {
 				currentItem.addClass(CSS_CLASSES.IS_PLAYING);
+				
+				// 如果需要滚动到当前曲目
+				if (scrollToTrack) {
+					currentItem.scrollIntoView({
+						behavior: "smooth",
+						block: "center"
+					});
+				}
 			}
+		}
+	}
+
+	/**
+	 * 滚动到当前播放的歌曲
+	 */
+	scrollToCurrentTrack(): void {
+		const currentItem = this.playlistEl.querySelector(
+			`.${CSS_CLASSES.IS_PLAYING}`
+		) as HTMLElement;
+		if (currentItem) {
+			currentItem.scrollIntoView({
+				behavior: "smooth",
+				block: "center"
+			});
 		}
 	}
 

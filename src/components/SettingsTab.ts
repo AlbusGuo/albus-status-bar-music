@@ -32,11 +32,11 @@ export class SettingsTab extends PluginSettingTab {
 		// 音乐文件夹设置
 		this.displayMusicFolderSetting();
 
+		// 元数据统计（紧跟音乐文件夹设置）
+		this.displayMetadataStats();
+
 		// 界面设置
 		this.displayUISettings();
-
-		// 元数据统计
-		this.displayMetadataStats();
 		
 		// 立即更新一次，确保显示最新数据
 		setTimeout(() => {
@@ -76,9 +76,6 @@ export class SettingsTab extends PluginSettingTab {
 	 * 显示界面设置
 	 */
 	private displayUISettings(): void {
-		// 添加分组标题
-		this.containerEl.createEl("h3", { text: "界面设置" });
-
 		// 状态栏控制按钮显示设置
 		new Setting(this.containerEl)
 			.setName("显示状态栏控制按钮")
