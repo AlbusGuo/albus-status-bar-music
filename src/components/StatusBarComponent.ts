@@ -7,6 +7,7 @@ export class StatusBarComponent {
 	private prevButton: HTMLButtonElement;
 	private playPauseButton: HTMLButtonElement;
 	private nextButton: HTMLButtonElement;
+	private lyricsButton: HTMLButtonElement;
 	private trackButton: HTMLButtonElement;
 	private trackNameEl: HTMLSpanElement;
 	private progressEl: HTMLDivElement;
@@ -18,6 +19,7 @@ export class StatusBarComponent {
 		onPrevious?: () => void;
 		onPlayPause?: () => void;
 		onNext?: () => void;
+		onLyricsToggle?: () => void;
 		onTrackClick?: () => void;
 	} = {};
 
@@ -51,6 +53,13 @@ export class StatusBarComponent {
 		});
 		setIcon(this.nextButton, ICONS.SKIP_FORWARD);
 
+		// 歌词按钮
+		this.lyricsButton = this.containerEl.createEl("button", {
+			cls: CSS_CLASSES.BUTTON + " statusbar-lyrics-button",
+			attr: { title: "显示/隐藏歌词" },
+		});
+		setIcon(this.lyricsButton, ICONS.TEXT);
+
 		// 曲目按钮
 		this.trackButton = this.containerEl.createEl("button", {
 			cls: CSS_CLASSES.TRACK_BUTTON,
@@ -81,6 +90,10 @@ export class StatusBarComponent {
 
 		this.nextButton.addEventListener("click", () => {
 			this.events.onNext?.();
+		});
+
+		this.lyricsButton.addEventListener("click", () => {
+			this.events.onLyricsToggle?.();
 		});
 
 		this.trackButton.addEventListener("click", () => {
@@ -234,10 +247,23 @@ export class StatusBarComponent {
 			this.prevButton.show();
 			this.playPauseButton.show();
 			this.nextButton.show();
+			this.lyricsButton.show();
 		} else {
 			this.prevButton.hide();
 			this.playPauseButton.hide();
 			this.nextButton.hide();
+			this.lyricsButton.hide();
+		}
+	}
+
+	/**
+	 * 设置歌词按钮激活状态
+	 */
+	setLyricsButtonActive(active: boolean): void {
+		if (active) {
+			this.lyricsButton.addClass("active");
+		} else {
+			this.lyricsButton.removeClass("active");
 		}
 	}
 

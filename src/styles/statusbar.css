@@ -108,6 +108,20 @@
 	animation: spin 1s linear infinite;
 }
 
+/* 状态栏歌词按钮样式 */
+.statusbar-lyrics-button {
+	width: 30px;
+	height: 30px;
+}
+
+.statusbar-lyrics-button.active {
+	background: var(--interactive-accent) !important;
+}
+
+.statusbar-lyrics-button.active .svg-icon {
+	color: var(--text-on-accent) !important;
+}
+
 @keyframes spin {
 	from {
 		transform: rotate(0deg);

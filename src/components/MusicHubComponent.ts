@@ -9,7 +9,6 @@ export class MusicHubComponent {
 	private containerEl: HTMLElement;
 	private functionBar: HTMLElement;
 	private favButton: HTMLButtonElement;
-	private refreshButton: HTMLButtonElement;
 	private searchInput: HTMLInputElement;
 	private playlistToggleButton: HTMLButtonElement;
 	private modeButton: HTMLButtonElement;
@@ -24,7 +23,6 @@ export class MusicHubComponent {
 	private vinylPlayer: VinylPlayer;
 	private lyricsComponent: LyricsComponent | null = null;
 	private floatingLyricsComponent: LyricsComponent | null = null; // 悬浮歌词组件
-	private lyricsButton: HTMLButtonElement;
 	private lyricsContainer: HTMLElement;
 	private volumeButton: HTMLButtonElement;
 	private volumeSliderContainer: HTMLElement;
@@ -34,7 +32,6 @@ export class MusicHubComponent {
 	private isProgressDragging = false; // 进度条拖拽状态
 	private isHubDragging = false; // 窗口拖拽状态
 	private isVisible = false;
-	private isFirstShow = true;
 	private dragOffset = { x: 0, y: 0 };
 	private dragHandle: HTMLElement | null = null;
 	private closeOnClickOutside = false; // 是否点击外部关闭
@@ -42,7 +39,6 @@ export class MusicHubComponent {
 
 	private events: {
 		onFavoriteToggle?: () => void;
-		onRefresh?: () => void;
 		onSearch?: (query: string) => void;
 		onPlaylistToggle?: () => void;
 		onCategoryChange?: (category: string) => void;
@@ -59,6 +55,7 @@ export class MusicHubComponent {
 		onSeekToTime?: (time: number) => void;
 		onVolumeChange?: (volume: number) => void;
 		onFloatingLyricsShow?: () => void; // 悬浮歌词显示时触发
+		onLyricsButtonStateChange?: (active: boolean) => void; // 歌词按钮状态变化时触发
 	} = {};
 
 	constructor() {
@@ -111,25 +108,12 @@ export class MusicHubComponent {
 			cls: "hub-function-bar",
 		});
 
-		// 刷新按钮
-		this.refreshButton = this.functionBar.createEl("button", {
-			cls: "hub-function-button hub-refresh-button",
-		});
-		setIcon(this.refreshButton, ICONS.REFRESH);
-
 		// 搜索框
 		this.searchInput = this.functionBar.createEl("input", {
 			cls: "hub-search-input",
 			type: "text",
-			attr: { placeholder: "搜索歌曲、艺术家..." },
+			attr: { placeholder: "搜索歌曲、艺术家、专辑..." },
 		});
-
-		// 歌词按钮
-		this.lyricsButton = this.functionBar.createEl("button", {
-			cls: "hub-function-button hub-lyrics-button",
-			attr: { title: "显示/隐藏歌词" },
-		});
-		setIcon(this.lyricsButton, ICONS.TEXT);
 	}
 
 	/**
@@ -262,18 +246,9 @@ export class MusicHubComponent {
 			this.events.onFavoriteToggle?.();
 		});
 
-		this.refreshButton.addEventListener("click", () => {
-			this.events.onRefresh?.();
-		});
-
 		// 搜索框事件
 		this.searchInput.addEventListener("input", () => {
 			this.events.onSearch?.(this.searchInput.value);
-		});
-
-		// 歌词按钮事件
-		this.lyricsButton.addEventListener("click", () => {
-			this.toggleLyrics();
 		});
 
 		// 音量按钮事件
@@ -399,7 +374,7 @@ export class MusicHubComponent {
 	 * 第一次点击：显示悬浮歌词，关闭状态栏歌词显示
 	 * 第二次点击：关闭悬浮歌词，显示状态栏歌词
 	 */
-	private toggleLyrics(): void {
+	toggleLyrics(): void {
 		// 检查悬浮歌词是否显示
 		const isFloatingVisible = this.floatingLyricsComponent?.isVisible() || false;
 		
@@ -418,7 +393,8 @@ export class MusicHubComponent {
 	 * 显示悬浮歌词
 	 */
 	private showFloatingLyrics(): void {
-		this.lyricsButton.addClass("active");
+		// 通知状态栏更新按钮状态
+		this.events.onLyricsButtonStateChange?.(true);
 		
 		// 创建悬浮歌词组件（如果还没有）
 		if (!this.floatingLyricsComponent) {
@@ -450,7 +426,8 @@ export class MusicHubComponent {
 	 * 隐藏悬浮歌词
 	 */
 	private hideFloatingLyrics(): void {
-		this.lyricsButton.removeClass("active");
+		// 通知状态栏更新按钮状态
+		this.events.onLyricsButtonStateChange?.(false);
 		
 		if (this.floatingLyricsComponent) {
 			this.floatingLyricsComponent.hide();
@@ -584,15 +561,6 @@ export class MusicHubComponent {
 			// 如果启用了点击外部关闭，添加监听器
 			if (this.closeOnClickOutside) {
 				this.addClickOutsideListener();
-			}
-
-			// 如果是第一次显示，自动触发刷新
-			if (this.isFirstShow) {
-				this.isFirstShow = false;
-				// 延迟一点时间确保UI完全渲染后再触发刷新
-				setTimeout(() => {
-					this.events.onRefresh?.();
-				}, 100);
 			}
 		} catch (error) {
 			console.error("MusicHub: Error showing hub:", error);
@@ -1028,16 +996,7 @@ export class MusicHubComponent {
 		});
 	}
 
-	/**
-	 * 设置刷新按钮加载状态
-	 */
-	setRefreshLoading(loading: boolean): void {
-		if (loading) {
-			this.refreshButton.addClass(CSS_CLASSES.IS_LOADING);
-		} else {
-			this.refreshButton.removeClass(CSS_CLASSES.IS_LOADING);
-		}
-	}
+
 
 	/**
 	 * 获取容器元素
@@ -1051,6 +1010,13 @@ export class MusicHubComponent {
 	 */
 	isOpen(): boolean {
 		return this.isVisible;
+	}
+
+	/**
+	 * 检查悬浮歌词是否显示
+	 */
+	isFloatingLyricsVisible(): boolean {
+		return this.floatingLyricsComponent?.isVisible() || false;
 	}
 
 	/**

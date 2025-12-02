@@ -176,6 +176,13 @@ export default class StatusBarMusicPlugin extends Plugin {
 			}
 		});
 
+		this.statusBar.on("onLyricsToggle", () => {
+			this.musicHub.toggleLyrics();
+			// 同步状态栏歌词按钮的激活状态
+			const isFloatingVisible = this.musicHub.isFloatingLyricsVisible();
+			this.statusBar!.setLyricsButtonActive(isFloatingVisible);
+		});
+
 		this.statusBar.on("onTrackClick", () => {
 			this.musicHub.toggle(this.statusBar!.getElement());
 		});
@@ -211,16 +218,6 @@ export default class StatusBarMusicPlugin extends Plugin {
 			this.playlistManager.toggleFavorite();
 			this.updateFavoriteButton();
 			this.saveSettings();
-		});
-
-		this.musicHub.on("onRefresh", async () => {
-			this.musicHub.setRefreshLoading(true);
-			try {
-				await this.playlistManager.refreshMetadata();
-				await this.saveSettings();
-			} finally {
-				this.musicHub.setRefreshLoading(false);
-			}
 		});
 
 		// 黑胶唱片播放器事件
@@ -304,6 +301,13 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 		this.musicHub.on("onVolumeChange", (volume: number) => {
 			this.audioPlayer.setVolume(volume);
+		});
+
+		// 歌词按钮状态变化事件 - 同步状态栏按钮
+		this.musicHub.on("onLyricsButtonStateChange", (active: boolean) => {
+			if (this.statusBar) {
+				this.statusBar.setLyricsButtonActive(active);
+			}
 		});
 
 		// 悬浮歌词显示事件 - 立即同步当前歌词数据和播放时间

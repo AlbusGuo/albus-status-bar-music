@@ -128,14 +128,13 @@
 	background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* 背景模式下刷新按钮的特殊样式 */
-.albus-status-bar-music-hub-container.has-background .hub-refresh-button,
+/* 背景模式下歌词按钮的特殊样式 */
 .albus-status-bar-music-hub-container.has-background .hub-lyrics-button {
 	background-color: rgba(255, 255, 255, 0.15);
 	border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.albus-status-bar-music-hub-container.has-background .hub-refresh-button:hover {
+.albus-status-bar-music-hub-container.has-background .hub-lyrics-button:hover {
 	background-color: rgba(255, 255, 255, 0.25);
 	border-color: rgba(255, 255, 255, 0.3);
 }
@@ -244,10 +243,9 @@
 
 /* 功能按钮栏 */
 .hub-function-bar {
-	display: grid;
-	grid-template-columns: auto 1fr auto;
+	display: flex;
 	align-items: center;
-	gap: 8px;
+	width: 100%;
 }
 
 .hub-function-button {
@@ -263,8 +261,7 @@
 	color: var(--icon-color) !important;
 }
 
-/* 刷新按钮和歌词按钮特殊样式 - 固定小尺寸 */
-.hub-refresh-button,
+/* 歌词按钮特殊样式 - 固定小尺寸 */
 .hub-lyrics-button {
 	width: 32px;
 	height: 32px;
@@ -292,8 +289,7 @@
 	color: var(--text-on-accent);
 }
 
-/* 刷新按钮和歌词按钮图标特殊尺寸 */
-.hub-refresh-button .svg-icon,
+/* 歌词按钮图标特殊尺寸 */
 .hub-lyrics-button .svg-icon {
 	width: 18px;
 	height: 18px;
@@ -304,9 +300,10 @@
 	fill: var(--text-on-accent);
 }
 
-/* 搜索框样式 */
+/* 搜索框样式 - 占满全宽 */
 .hub-search-input {
-	flex-grow: 1;
+	flex: 1;
+	width: 100%;
 	background: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 5px;

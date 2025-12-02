@@ -496,6 +496,22 @@ export class LyricsComponent extends Component {
 			emptyLine.createDiv({ cls: "music-lyrics-text", text: "♪" });
 		}
 		
+		// 立即更新样式类（在动画开始前）
+		// 此时有4行：[0]=prev(将移除), [1]=current(变prev), [2]=next(变current), [3]=新行(next)
+		const allLines = container.querySelectorAll(".music-lyrics-line");
+		if (allLines.length >= 4) {
+			// 不管第0行，它即将被移除
+			// 第1行：current -> prev
+			allLines[1].removeClass("current");
+			allLines[1].addClass("prev");
+			
+			// 第2行：next -> current
+			allLines[2].removeClass("prev");
+			allLines[2].addClass("current");
+			
+			// 第3行：默认就是 next，不需要额外处理
+		}
+		
 		// 触发向上滑动动画
 		requestAnimationFrame(() => {
 			container.addClass("lyrics-slide-up");
@@ -509,19 +525,6 @@ export class LyricsComponent extends Component {
 			const firstLine = container.querySelector(".music-lyrics-line");
 			if (firstLine) {
 				firstLine.remove();
-			}
-			
-			// 更新样式类
-			const lines = container.querySelectorAll(".music-lyrics-line");
-			if (lines.length >= 3) {
-				lines[0].removeClass("current");
-				lines[0].addClass("prev");
-				
-				lines[1].removeClass("prev");
-				lines[1].addClass("current");
-				
-				lines[2].removeClass("current");
-				lines[2].removeClass("prev");
 			}
 			
 			// 立即重置位置（无过渡）
