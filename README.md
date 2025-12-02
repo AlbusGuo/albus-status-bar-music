@@ -3,7 +3,7 @@
 > 本项目基于[obsidian-vault-radio](https://github.com/Laevin/obsidian-vault-radio)，该原始项目由[Laevin](https://github.com/Laevin)开发，并使用 MIT 许可证。
 
 ![ObsidianPlugin](https://img.shields.io/badge/Obsidian-Plugin-red?logo=obsidian)
-![Version](https://img.shields.io/badge/Version-0.2.0-blue)
+![Version](https://img.shields.io/badge/Version-0.4.0-blue)
 ![release](https://img.shields.io/github/downloads/AlbusGuo/albus-status-bar-music/total?style=flat&label=Total%20Downloads)
 
 ## 🌟 为什么选择 Albus Status Bar Music？
