@@ -17,6 +17,7 @@ export class MetadataManager {
 	private isInitialized: boolean = false;
 	private totalTracks: number = 0;
 	private processedTracks: number = 0;
+	private onProgressUpdate?: (current: number, total: number) => void;
 
 	constructor(app: App) {
 		this.app = app;
@@ -30,6 +31,13 @@ export class MetadataManager {
 	 */
 	setSaveCallback(callback: () => void): void {
 		this.onSaveNeeded = callback;
+	}
+	
+	/**
+	 * 设置进度更新回调
+	 */
+	setProgressCallback(callback: (current: number, total: number) => void): void {
+		this.onProgressUpdate = callback;
 	}
 
 	/**
@@ -135,6 +143,23 @@ initializeFromSettings(settings: PluginSettings): void {
 		// 发现音乐文件
 
 		// 批量处理所有文件，等待全部完成后再更新UI
+		this.totalTracks = musicFiles.length;
+		this.processedTracks = 0;
+		
+		// 如果没有音乐文件，直接标记完成
+		if (this.totalTracks === 0) {
+			this.isInitialized = true;
+			if (this.onProgressUpdate) {
+				this.onProgressUpdate(0, 0);
+			}
+			return;
+		}
+		
+		// 通知初始进度
+		if (this.onProgressUpdate) {
+			this.onProgressUpdate(0, this.totalTracks);
+		}
+		
 		const processingPromises: Promise<void>[] = [];
 		let processedCount = 0;
 		let skippedCount = 0;
@@ -143,15 +168,25 @@ initializeFromSettings(settings: PluginSettings): void {
 			const processingPromise = this.processFileIfNeeded(file, existingData);
 			processingPromise.then(() => {
 				processedCount++;
+				this.processedTracks = processedCount;
+				// 通知进度更新
+				if (this.onProgressUpdate) {
+					this.onProgressUpdate(this.processedTracks, this.totalTracks);
+				}
 			}).catch(() => {
 				// 即使出错也算作处理完成
 				processedCount++;
+				this.processedTracks = processedCount;
+				// 通知进度更新
+				if (this.onProgressUpdate) {
+					this.onProgressUpdate(this.processedTracks, this.totalTracks);
+				}
 			});
 			processingPromises.push(processingPromise);
 		}
 
 		// 等待所有文件处理完成
-		await Promise.allSettled(processingPromises);
+		await Promise.all(processingPromises);
 
 		// 统计跳过的文件数量
 		for (const file of musicFiles) {
@@ -163,7 +198,13 @@ initializeFromSettings(settings: PluginSettings): void {
 		// 文件处理完成
 
 		// 所有文件处理完成后，保存设置
+		this.isInitialized = true;
 		this.scheduleSave();
+		
+		// 通知完成
+		if (this.onProgressUpdate) {
+			this.onProgressUpdate(this.totalTracks, this.totalTracks);
+		}
 	}
 
 	/**

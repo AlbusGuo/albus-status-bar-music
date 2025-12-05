@@ -250,6 +250,13 @@ export class AudioPlayerService {
 	isLoaded(): boolean {
 		return this.audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
 	}
+	
+	/**
+	 * 检查是否有曲目已加载（用于预加载检测）
+	 */
+	isTrackLoaded(): boolean {
+		return this.currentTrack !== null && this.audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+	}
 
 	/**
 	 * 检查是否可以播放
