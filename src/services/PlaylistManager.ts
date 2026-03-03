@@ -97,36 +97,23 @@ export class PlaylistManager {
 
 		const musicFolderPath = normalizePath(currentSettings.musicFolderPath);
 		
-		// 分批处理文件收集，避免阻塞UI
+		// 一次性收集所有音乐文件（同步操作，足够快不需要分批）
 		const allFiles = this.app.vault.getFiles();
 		const collectedFiles = new Map<string, TFile>();
 		const playlistFolders = new Set<string>();
-		const batchSize = 50; // 每批处理50个文件
 
-		for (let i = 0; i < allFiles.length; i += batchSize) {
-			const batch = allFiles.slice(i, i + batchSize);
-			
-			// 处理当前批次
-			batch.forEach(file => {
-				const isMusicFile = isSupportedAudioFile(file.name);
-				if (isMusicFile && file.path.startsWith(musicFolderPath)) {
-					collectedFiles.set(file.path, file);
-					
-					// 检测子文件夹作为歌单
-					const relativePath = file.path.substring(musicFolderPath.length);
-					const pathParts = relativePath.split('/').filter(part => part);
-					
-					if (pathParts.length > 1) {
-						// 有子文件夹，将第一层子文件夹作为歌单
-						const playlistName = pathParts[0];
-						playlistFolders.add(playlistName);
-					}
+		for (const file of allFiles) {
+			if (isSupportedAudioFile(file.name) && file.path.startsWith(musicFolderPath)) {
+				collectedFiles.set(file.path, file);
+				
+				// 检测子文件夹作为歌单
+				const relativePath = file.path.substring(musicFolderPath.length);
+				const pathParts = relativePath.split('/').filter(part => part);
+				
+				if (pathParts.length > 1) {
+					const playlistName = pathParts[0];
+					playlistFolders.add(playlistName);
 				}
-			});
-
-			// 每处理一批后稍作延迟，让UI有机会响应
-			if (i + batchSize < allFiles.length) {
-				await new Promise(resolve => setTimeout(resolve, 10));
 			}
 		}
 
@@ -189,12 +176,6 @@ export class PlaylistManager {
 
 		this.updateView();
 		this.emit("onPlaylistUpdate", this.viewPlaylist);
-		
-		// 额外确保UI组件收到元数据更新
-		setTimeout(() => {
-			// 再次触发更新，确保封面数据正确显示
-			this.emit("onPlaylistUpdate", this.viewPlaylist);
-		}, 100);
 	}
 
 	/**
@@ -222,6 +203,14 @@ export class PlaylistManager {
 			
 			// 更新播放列表的元数据
 			this.updatePlaylistMetadata();
+			
+			// 同步当前曲目的元数据（currentTrack 可能是旧引用，未被 updatePlaylistMetadata 覆盖）
+			if (this.currentTrack) {
+				const updatedMetadata = this.metadataManager.getMetadata(this.currentTrack.path);
+				if (updatedMetadata) {
+					this.currentTrack.metadata = updatedMetadata;
+				}
+			}
 			
 			// 重新更新视图以确保歌单过滤正确
 			this.updateView();

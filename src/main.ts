@@ -1,4 +1,4 @@
-import { Plugin } from "obsidian";
+import { Notice, Plugin } from "obsidian";
 import { MusicHubComponent } from "./components/MusicHubComponent";
 import { SettingsTab } from "./components/SettingsTab";
 import { StatusBarComponent } from "./components/StatusBarComponent";
@@ -6,8 +6,8 @@ import { AudioPlayerService } from "./services/AudioPlayerService";
 import { LyricsService } from "./services/LyricsService";
 import { PlaylistManager } from "./services/PlaylistManager";
 import "./styles/styles";
-import { MusicTrack, PlaybackMode, PluginSettings } from "./types";
-import { DEFAULT_SETTINGS } from "./utils/helpers";
+import { LyricsDisplayState, MusicTrack, PlaybackMode, PluginSettings } from "./types";
+import { DEFAULT_SETTINGS, debounce } from "./utils/helpers";
 
 export default class StatusBarMusicPlugin extends Plugin {
 	settings: PluginSettings;
@@ -18,7 +18,8 @@ export default class StatusBarMusicPlugin extends Plugin {
 	private musicHub: MusicHubComponent;
 	private settingsTab: SettingsTab;
 	private playlistUpdateTimeout: NodeJS.Timeout | null = null;
-	private isLyricsDisplayEnabled: boolean = false;
+	private lyricsDisplayState: LyricsDisplayState = "off";
+	private debouncedSaveSettings = debounce(() => this.saveSettings(), 500);
 
 	async onload() {
 		try {
@@ -44,45 +45,59 @@ export default class StatusBarMusicPlugin extends Plugin {
 			// 添加设置页面
 			this.addSettingTab(this.settingsTab);
 
-			// 异步加载播放列表并刷新元数据
-			setTimeout(async () => {
-				try {
-					// 首先初始化元数据管理器（从data.json加载已有数据）
-					const currentSettings = this.settings;
-					this.playlistManager.initializeMetadata(currentSettings);
-
-					// 创建状态栏（无论是否有音乐文件都要创建）
-					this.createStatusBar();
-
-					// 检查是否有音乐文件夹路径
-					if (
-						currentSettings.musicFolderPath &&
-						currentSettings.musicFolderPath.trim() !== ""
-					) {
-						// 有音乐文件夹路径，加载播放列表
-						await this.playlistManager.loadFullPlaylist();
-
-						// 刷新元数据（重新扫描文件，解决blob URL失效）
-						await this.playlistManager.refreshMetadata();
-						await this.saveSettings();
-
-						console.log(
-							"StatusBarMusicPlugin: Music library loaded successfully"
-						);
-					} else {
-						console.log(
-							"StatusBarMusicPlugin: No music folder set, waiting for user configuration"
-						);
-					}
-				} catch (error) {
-					console.error(
-						"StatusBarMusicPlugin: Failed to load playlist or refresh metadata",
-						error
-					);
-				}
-			}, 100);
+			// 布局就绪后异步加载播放列表并刷新元数据
+			this.app.workspace.onLayoutReady(() => this.initializePlugin());
 		} catch (error) {
 			// 静默处理错误，避免干扰用户体验
+		}
+	}
+
+	/**
+	 * 布局就绪后初始化插件
+	 */
+	private async initializePlugin(): Promise<void> {
+		try {
+			this.playlistManager.initializeMetadata(this.settings);
+			this.createStatusBar();
+
+			// 应用已保存的音量
+			this.audioPlayer.setVolume(this.settings.volume);
+			this.musicHub.setInitialVolume(this.settings.volume);
+
+			// 应用已保存的歌词颜色
+			this.applyLyricsColors();
+
+			if (this.settings.musicFolderPath?.trim()) {
+				// 先从缓存加载播放列表（极快）
+				await this.playlistManager.loadFullPlaylist();
+
+				const playlist = this.playlistManager.getViewPlaylist();
+				const trackCount = playlist.length;
+
+				// 如果首歌存在，立即加载歌词
+				const currentTrack = this.playlistManager.getCurrentTrack();
+				if (currentTrack) {
+					await this.loadLyricsForTrack(currentTrack);
+				}
+
+				// 后台刷新元数据（不阻塞 UI）
+				this.playlistManager.refreshMetadata().then(async () => {
+					await this.saveSettings();
+					if (this.settings.showLoadNotice) {
+						new Notice(`音乐库加载完成，共 ${trackCount} 首歌曲`);
+					}
+					
+					// 元数据刷新后，重新更新当前曲目的封面、侧边唱片和歌词
+					const refreshedTrack = this.playlistManager.getCurrentTrack();
+					if (refreshedTrack) {
+						this.musicHub.updateCurrentTrack(refreshedTrack);
+						this.updateHubSideVinyls();
+						await this.loadLyricsForTrack(refreshedTrack);
+					}
+				});
+			}
+		} catch {
+			// 静默处理初始化错误
 		}
 	}
 
@@ -177,10 +192,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 		});
 
 		this.statusBar.on("onLyricsToggle", () => {
-			this.musicHub.toggleLyrics();
-			// 同步状态栏歌词按钮的激活状态
-			const isFloatingVisible = this.musicHub.isFloatingLyricsVisible();
-			this.statusBar!.setLyricsButtonActive(isFloatingVisible);
+			this.cycleLyricsState();
 		});
 
 		this.statusBar.on("onTrackClick", () => {
@@ -235,10 +247,6 @@ export default class StatusBarMusicPlugin extends Plugin {
 			this.playlistManager.setSearchQuery(query);
 		});
 
-		this.musicHub.on("onCategoryChange", (category: string) => {
-			this.playlistManager.setCategory(category as any);
-		});
-
 		this.musicHub.on("onGetCategories", () => {
 			return this.playlistManager.getCategories();
 		});
@@ -275,45 +283,27 @@ export default class StatusBarMusicPlugin extends Plugin {
 			}
 		});
 
-		// 歌词相关事件
-		this.musicHub.on("onLyricsToggle", (enableStatusBarLyrics: boolean) => {
-			// 设置状态栏歌词显示状态
-			this.isLyricsDisplayEnabled = enableStatusBarLyrics;
-
-			// 更新状态栏显示模式
-			if (this.statusBar) {
-				this.statusBar.setLyricsMode(enableStatusBarLyrics);
-			}
-
-			// 如果启用状态栏歌词模式，立即更新当前歌词
-			if (enableStatusBarLyrics) {
-				const currentLyricsText =
-					this.lyricsService.getCurrentLineText();
-				if (this.statusBar) {
-					this.statusBar.updateLyricsText(currentLyricsText);
-				}
-			}
-		});
-
 		this.musicHub.on("onSeekToTime", (time: number) => {
 			this.audioPlayer.seekTo(time);
 		});
 
 		this.musicHub.on("onVolumeChange", (volume: number) => {
 			this.audioPlayer.setVolume(volume);
-		});
-
-		// 歌词按钮状态变化事件 - 同步状态栏按钮
-		this.musicHub.on("onLyricsButtonStateChange", (active: boolean) => {
-			if (this.statusBar) {
-				this.statusBar.setLyricsButtonActive(active);
-			}
+			this.settings.volume = volume;
+			this.debouncedSaveSettings();
 		});
 
 		// 悬浮歌词显示事件 - 立即同步当前歌词数据和播放时间
-		this.musicHub.on("onFloatingLyricsShow", () => {
-			// 1. 同步歌词数据
-			const currentLyrics = this.lyricsService.getCurrentLyrics();
+		this.musicHub.on("onFloatingLyricsShow", async () => {
+			// 1. 同步歌词数据（如果歌词尚未加载，尝试重新加载）
+			let currentLyrics = this.lyricsService.getCurrentLyrics();
+			if (!currentLyrics) {
+				const currentTrack = this.playlistManager.getCurrentTrack();
+				if (currentTrack) {
+					await this.loadLyricsForTrack(currentTrack);
+					currentLyrics = this.lyricsService.getCurrentLyrics();
+				}
+			}
 			this.musicHub.updateLyrics(currentLyrics);
 			
 			// 2. 获取当前播放时间并更新到歌词服务
@@ -328,7 +318,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 		// 歌词服务事件 - 当前歌词行变化时更新状态栏
 		this.lyricsService.on("onCurrentLineChange", (lineIndex: number) => {
 			// 更新状态栏歌词
-			if (this.isLyricsDisplayEnabled && this.statusBar) {
+			if (this.lyricsDisplayState === "statusbar" && this.statusBar) {
 				const currentLyricsText =
 					this.lyricsService.getCurrentLineText();
 				this.statusBar.updateLyricsText(currentLyricsText);
@@ -340,8 +330,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 		// 歌词服务事件 - 歌词加载完成
 		this.lyricsService.on("onLyricsLoaded", (lyrics) => {
-			// 当歌词加载完成且处于歌词模式时，显示第一行歌词或清空显示
-			if (this.isLyricsDisplayEnabled && this.statusBar) {
+			if (this.lyricsDisplayState === "statusbar" && this.statusBar) {
 				const initialText =
 					lyrics && lyrics.lines.length > 0
 						? lyrics.lines[0].text
@@ -515,7 +504,48 @@ export default class StatusBarMusicPlugin extends Plugin {
 	private updateLyricsTime(): void {
 		const currentTime = this.audioPlayer.getCurrentTime();
 		this.lyricsService.updateCurrentTime(currentTime);
-		// 不再在这里直接更新 UI，改为依赖 onCurrentLineChange 事件
+	}
+
+	/**
+	 * 三段式切换歌词显示状态
+	 */
+	private cycleLyricsState(): void {
+		switch (this.lyricsDisplayState) {
+			case "off":
+				// 打开状态栏歌词
+				this.lyricsDisplayState = "statusbar";
+				this.statusBar?.setLyricsMode(true);
+				this.statusBar?.setLyricsButtonState("statusbar");
+				this.musicHub.hideFloatingLyrics();
+				{
+					let text = this.lyricsService.getCurrentLineText();
+					// 如果当前行为空但歌词存在，显示第一句
+					if (!text) {
+						const lyrics = this.lyricsService.getCurrentLyrics();
+						if (lyrics && lyrics.lines.length > 0) {
+							text = lyrics.lines[0].text;
+						}
+					}
+					this.statusBar?.updateLyricsText(text);
+				}
+				break;
+
+			case "statusbar":
+				// 打开悬浮歌词
+				this.lyricsDisplayState = "floating";
+				this.statusBar?.setLyricsMode(false);
+				this.statusBar?.setLyricsButtonState("floating");
+				this.musicHub.showFloatingLyrics();
+				break;
+
+			case "floating":
+				// 关闭所有歌词
+				this.lyricsDisplayState = "off";
+				this.statusBar?.setLyricsMode(false);
+				this.statusBar?.setLyricsButtonState("off");
+				this.musicHub.hideFloatingLyrics();
+				break;
+		}
 	}
 
 	/**
@@ -541,6 +571,10 @@ export default class StatusBarMusicPlugin extends Plugin {
 			) {
 				// 如果AudioPlayer中的曲目与当前曲目不一致，先加载曲目
 				await this.audioPlayer.loadTrack(currentTrack);
+				// 确保歌词已加载
+				if (!this.lyricsService.getCurrentLyrics()) {
+					await this.loadLyricsForTrack(currentTrack);
+				}
 			}
 
 			await this.audioPlayer.togglePlayPause();
@@ -718,6 +752,19 @@ export default class StatusBarMusicPlugin extends Plugin {
 		if (this.musicHub) {
 			this.musicHub.setCloseOnClickOutside(
 				this.settings.closeHubOnClickOutside
+			);
+		}
+	}
+
+	/**
+	 * 应用歌词自定义颜色到悬浮歌词
+	 */
+	applyLyricsColors(): void {
+		if (this.musicHub) {
+			// 传递深色和浅色两个颜色，由 CSS 根据当前主题自动选择
+			this.musicHub.setFloatingLyricsColors(
+				this.settings.lyricsHighlightColorDark,
+				this.settings.lyricsHighlightColorLight
 			);
 		}
 	}

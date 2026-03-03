@@ -21,9 +21,7 @@ export class MusicHubComponent {
 	private timeDisplay: HTMLElement;
 	private playlistEl: HTMLUListElement;
 	private vinylPlayer: VinylPlayer;
-	private lyricsComponent: LyricsComponent | null = null;
 	private floatingLyricsComponent: LyricsComponent | null = null; // 悬浮歌词组件
-	private lyricsContainer: HTMLElement;
 	private volumeButton: HTMLButtonElement;
 	private volumeSliderContainer: HTMLElement;
 	private volumeSlider: HTMLInputElement;
@@ -31,6 +29,13 @@ export class MusicHubComponent {
 
 	private isProgressDragging = false; // 进度条拖拽状态
 	private isHubDragging = false; // 窗口拖拽状态
+	private switchDirection: "prev" | "next" | null = null; // 切歌方向
+	private pendingCenterUpdate = false; // 是否有延迟的中心唱片更新
+	private pendingTrackData: MusicTrack | null = null; // 缓冲的曲目数据
+	private carouselAnimations: Animation[] = []; // 当前轮播动画
+	private carouselTimer: number | null = null; // 轮播阶段计时器
+	private floatingHighlightColorDark: string = ""; // 悬浮歌词深色高亮
+	private floatingHighlightColorLight: string = ""; // 悬浮歌词浅色高亮
 	private isVisible = false;
 	private dragOffset = { x: 0, y: 0 };
 	private dragHandle: HTMLElement | null = null;
@@ -51,7 +56,6 @@ export class MusicHubComponent {
 		onTrackSelect?: (track: MusicTrack) => void;
 		onHide?: () => void;
 		onVinylPlayPause?: () => void;
-		onLyricsToggle?: (enableStatusBarLyrics: boolean) => void; // 修改：接收布尔参数
 		onSeekToTime?: (time: number) => void;
 		onVolumeChange?: (volume: number) => void;
 		onFloatingLyricsShow?: () => void; // 悬浮歌词显示时触发
@@ -87,12 +91,6 @@ export class MusicHubComponent {
 
 		// 控制区域
 		this.createControls();
-
-		// 歌词容器
-		this.lyricsContainer = this.containerEl.createEl("div", {
-			cls: "hub-lyrics-container",
-		});
-		this.lyricsContainer.hide(); // 默认隐藏
 
 		// 播放列表
 		this.playlistEl = this.containerEl.createEl("ul", {
@@ -133,11 +131,7 @@ export class MusicHubComponent {
 		this.leftVinylButton = vinylSwitcherContainer.createEl("button", {
 			cls: "hub-side-vinyl hub-left-vinyl",
 		});
-		this.leftVinylButton.innerHTML = `
-			<div class="hub-side-vinyl-disc">
-				<div class="hub-side-vinyl-cover"></div>
-			</div>
-		`;
+		this.createSideVinylStructure(this.leftVinylButton);
 
 		// 中间黑胶唱片播放器容器
 		const vinylContainer = vinylSwitcherContainer.createEl("div", {
@@ -149,11 +143,7 @@ export class MusicHubComponent {
 		this.rightVinylButton = vinylSwitcherContainer.createEl("button", {
 			cls: "hub-side-vinyl hub-right-vinyl",
 		});
-		this.rightVinylButton.innerHTML = `
-			<div class="hub-side-vinyl-disc">
-				<div class="hub-side-vinyl-cover"></div>
-			</div>
-		`;
+		this.createSideVinylStructure(this.rightVinylButton);
 
 		// 连接黑胶唱片播放器事件
 		this.connectVinylEvents();
@@ -292,10 +282,14 @@ export class MusicHubComponent {
 
 		// 左右唱片按钮事件
 		this.leftVinylButton.addEventListener("click", () => {
+			this.switchDirection = "prev";
+			this.pendingCenterUpdate = true;
 			this.events.onPrevious?.();
 		});
 
 		this.rightVinylButton.addEventListener("click", () => {
+			this.switchDirection = "next";
+			this.pendingCenterUpdate = true;
 			this.events.onNext?.();
 		});
 
@@ -369,36 +363,23 @@ export class MusicHubComponent {
 	}
 
 	/**
-	 * 切换歌词显示
-	 * 逻辑：悬浮歌词 和 状态栏歌词 互斥显示
-	 * 第一次点击：显示悬浮歌词，关闭状态栏歌词显示
-	 * 第二次点击：关闭悬浮歌词，显示状态栏歌词
-	 */
-	toggleLyrics(): void {
-		// 检查悬浮歌词是否显示
-		const isFloatingVisible = this.floatingLyricsComponent?.isVisible() || false;
-		
-		if (isFloatingVisible) {
-			// 悬浮歌词正在显示，关闭悬浮歌词，启用状态栏歌词
-			this.hideFloatingLyrics();
-			this.events.onLyricsToggle?.(true); // 传递 true 表示启用状态栏歌词
-		} else {
-			// 悬浮歌词未显示，显示悬浮歌词，关闭状态栏歌词
-			this.showFloatingLyrics();
-			this.events.onLyricsToggle?.(false); // 传递 false 表示禁用状态栏歌词
-		}
-	}
-
-	/**
 	 * 显示悬浮歌词
 	 */
-	private showFloatingLyrics(): void {
+	showFloatingLyrics(): void {
 		// 通知状态栏更新按钮状态
 		this.events.onLyricsButtonStateChange?.(true);
 		
 		// 创建悬浮歌词组件（如果还没有）
 		if (!this.floatingLyricsComponent) {
 			this.floatingLyricsComponent = new LyricsComponent();
+			
+			// 应用已保存的歌词颜色
+			if (this.floatingHighlightColorDark || this.floatingHighlightColorLight) {
+				this.floatingLyricsComponent.setColors(
+					this.floatingHighlightColorDark,
+					this.floatingHighlightColorLight
+				);
+			}
 			
 			// 监听悬浮歌词的时间跳转事件
 			const floatingBar = document.querySelector(".music-lyrics-bar");
@@ -413,9 +394,7 @@ export class MusicHubComponent {
 			}
 		}
 
-		// 同步歌词数据（从 lyricsService 获取）
-		// 注意：这里不从 lyricsComponent 获取，因为它用于 Hub 内部显示
-		// 实际歌词数据会通过 updateLyrics 方法同步过来
+		// 显示歌词（自动进入锁定模式）
 		this.floatingLyricsComponent.show();
 		
 		// 触发悬浮歌词显示事件，通知主插件同步当前播放时间
@@ -425,7 +404,7 @@ export class MusicHubComponent {
 	/**
 	 * 隐藏悬浮歌词
 	 */
-	private hideFloatingLyrics(): void {
+	hideFloatingLyrics(): void {
 		// 通知状态栏更新按钮状态
 		this.events.onLyricsButtonStateChange?.(false);
 		
@@ -441,6 +420,17 @@ export class MusicHubComponent {
 		// 更新悬浮歌词组件（无论是否可见，确保切歌后数据同步）
 		if (this.floatingLyricsComponent) {
 			this.floatingLyricsComponent.setLyrics(lyrics);
+		}
+	}
+
+	/**
+	 * 设置悬浮歌词颜色（存储并应用）
+	 */
+	setFloatingLyricsColors(darkColor: string, lightColor: string): void {
+		this.floatingHighlightColorDark = darkColor;
+		this.floatingHighlightColorLight = lightColor;
+		if (this.floatingLyricsComponent) {
+			this.floatingLyricsComponent.setColors(darkColor, lightColor);
 		}
 	}
 
@@ -491,6 +481,20 @@ export class MusicHubComponent {
 	 */
 	getVolume(): number {
 		return this.currentVolume;
+	}
+
+	/**
+	 * 设置初始音量
+	 */
+	setInitialVolume(volume: number): void {
+		this.currentVolume = volume;
+		this.volumeSlider.value = (volume * 100).toString();
+		this.volumeSlider.style.setProperty("--volume-fill", `${volume * 100}%`);
+		if (volume === 0) {
+			setIcon(this.volumeButton, ICONS.VOLUME_MUTE);
+		} else {
+			setIcon(this.volumeButton, ICONS.VOLUME);
+		}
 	}
 
 	/**
@@ -666,9 +670,14 @@ export class MusicHubComponent {
 	 * 更新当前播放曲目
 	 */
 	updateCurrentTrack(track: MusicTrack | null): void {
+		if (this.pendingCenterUpdate) {
+			// 切歌动画进行中，缓冲中心唱片更新，仅先更新背景
+			this.pendingTrackData = track;
+			this.updateBackgroundCover(track);
+			return;
+		}
+		this.vinylPlayer.resetRotation();
 		this.vinylPlayer.setTrack(track);
-		// 更新左右唱片的封面将在主插件中处理
-		// 更新背景封面
 		this.updateBackgroundCover(track);
 	}
 
@@ -774,17 +783,215 @@ export class MusicHubComponent {
 	}
 
 	/**
-	 * 更新左右唱片按钮的封面
+	 * 更新左右唱片按钮的封面（带方向性切歌动画）
+	 * 使用 Web Animations API 实现真正的无缝滑动轮播：
+	 * 单阶段连续滑动 — 所有唱片物理滑向目标位置，动画结束帧同步更新内容。
+	 * 由于新中心内容=旧侧边内容、新侧边内容=旧中心内容，视觉完全无缝。
+	 * 唯一的新增元素（新侧边唱片）通过入场动画滑入。
 	 */
 	updateSideVinyls(
 		prevTrack: MusicTrack | null,
 		nextTrack: MusicTrack | null
 	): void {
-		// 更新左侧唱片（上一首）
-		this.updateSideVinyl(this.leftVinylButton, prevTrack);
+		const direction = this.switchDirection;
+		this.switchDirection = null;
 
-		// 更新右侧唱片（下一首）
-		this.updateSideVinyl(this.rightVinylButton, nextTrack);
+		if (!direction) {
+			// 非唱片按钮触发（状态栏切歌、初始加载、元数据刷新）
+			this.cancelCarouselAnimations();
+			this.pendingCenterUpdate = false;
+			this.updateSideVinyl(this.leftVinylButton, prevTrack);
+			this.updateSideVinyl(this.rightVinylButton, nextTrack);
+			if (this.pendingTrackData) {
+				this.vinylPlayer.setTrack(this.pendingTrackData);
+				this.pendingTrackData = null;
+			}
+			return;
+		}
+
+		const vinylContainer = this.controlsEl.querySelector(".hub-vinyl-container") as HTMLElement;
+		const centerDisc = vinylContainer?.querySelector(".vinyl-disc") as HTMLElement;
+		if (!centerDisc) {
+			this.pendingCenterUpdate = false;
+			this.updateSideVinyl(this.leftVinylButton, prevTrack);
+			this.updateSideVinyl(this.rightVinylButton, nextTrack);
+			if (this.pendingTrackData) {
+				this.vinylPlayer.setTrack(this.pendingTrackData);
+				this.pendingTrackData = null;
+			}
+			return;
+		}
+
+		// 取消上一次未完成的轮播动画
+		this.cancelCarouselAnimations();
+
+		// 测量实际渲染位置，计算相邻唱片的中心距离
+		const leftRect = this.leftVinylButton.getBoundingClientRect();
+		const centerRect = centerDisc.getBoundingClientRect();
+		const rightRect = this.rightVinylButton.getBoundingClientRect();
+		const leftCx = leftRect.left + leftRect.width / 2;
+		const centerCx = centerRect.left + centerRect.width / 2;
+		const rightCx = rightRect.left + rightRect.width / 2;
+		const stepL2C = centerCx - leftCx; // 左→中 距离 (~130px)
+		const stepC2R = rightCx - centerCx; // 中→右 距离 (~130px)
+
+		// 侧边唱片 CSS 静态 transform: scale(0.85) translateX(±8px)
+		// 动画 keyframe 必须保持相同的分量顺序 (scale 在前、translateX 在后)
+		// 以避免浏览器插值时产生垂直偏移
+		const SIDE_TX = 8; // px, 与 CSS translateX 一致
+		const SIDE_SCALE = 0.85;
+		const CENTER_W = 140;
+		const SIDE_W = 80;
+		const DURATION = 400;
+		const ENTER_DUR = 280;
+		const EASING = "cubic-bezier(0.33, 0, 0.2, 1)";
+		const ENTER_EASING = "cubic-bezier(0.1, 0, 0.2, 1)";
+
+		// 禁用 CSS transition 防止与 Web Animations 冲突
+		this.leftVinylButton.style.transition = "none";
+		this.rightVinylButton.style.transition = "none";
+		centerDisc.style.transition = "none";
+		this.leftVinylButton.style.pointerEvents = "none";
+		this.rightVinylButton.style.pointerEvents = "none";
+
+		if (direction === "next") {
+			// ===== 切下一首：所有唱片向左连续滑动 =====
+
+			// 左侧唱片：向左滑出视野
+			const a1 = this.leftVinylButton.animate([
+				{ transform: `scale(${SIDE_SCALE}) translateX(${-SIDE_TX}px)`, opacity: 0.7 },
+				{ transform: `scale(0.4) translateX(${-SIDE_TX - stepL2C * 1.4}px)`, opacity: 0 },
+			], { duration: DURATION, easing: EASING, fill: "forwards" });
+
+			// 中间唱片：滑向左侧位置并缩小
+			const a2 = centerDisc.animate([
+				{ transform: "scale(1)", opacity: 1 },
+				{ transform: `scale(${SIDE_SCALE * SIDE_W / CENTER_W}) translateX(${-stepL2C / (SIDE_SCALE * SIDE_W / CENTER_W)}px)`, opacity: 0.7 },
+			], { duration: DURATION, easing: EASING, fill: "forwards" });
+
+			// 右侧唱片：滑向中间位置并放大
+			const a3 = this.rightVinylButton.animate([
+				{ transform: `scale(${SIDE_SCALE}) translateX(${SIDE_TX}px)`, opacity: 0.7 },
+				{ transform: `scale(${CENTER_W / SIDE_W}) translateX(${(-stepC2R + SIDE_TX) / (CENTER_W / SIDE_W)}px)`, opacity: 1 },
+			], { duration: DURATION, easing: EASING, fill: "forwards" });
+
+			this.carouselAnimations = [a1, a2, a3];
+
+			// 动画结束：取消动画+更新内容在同一帧，视觉无缝
+			this.carouselTimer = window.setTimeout(() => {
+				a1.cancel();
+				a2.cancel();
+				a3.cancel();
+
+				// 同帧更新内容（新中心=旧右侧内容，新左侧=旧中心内容 → 视觉一致）
+				this.pendingCenterUpdate = false;
+				if (this.pendingTrackData) {
+					this.vinylPlayer.resetRotation();
+					this.vinylPlayer.setTrack(this.pendingTrackData);
+					this.pendingTrackData = null;
+				}
+				this.updateSideVinyl(this.leftVinylButton, prevTrack);
+				this.updateSideVinyl(this.rightVinylButton, nextTrack);
+
+				// 新右侧唱片从右侧滑入（唯一需要入场动画的元素）
+				const enterAnim = this.rightVinylButton.animate([
+					{ transform: `scale(0.4) translateX(${(stepC2R * 0.7 + SIDE_TX) / 0.4}px)`, opacity: 0 },
+					{ transform: `scale(${SIDE_SCALE}) translateX(${SIDE_TX}px)`, opacity: 0.7 },
+				], { duration: ENTER_DUR, easing: ENTER_EASING });
+
+				this.carouselAnimations = [enterAnim];
+				this.carouselTimer = window.setTimeout(() => {
+					this.restoreCarouselStyles(centerDisc);
+				}, ENTER_DUR + 50);
+			}, DURATION);
+
+		} else {
+			// ===== 切上一首：所有唱片向右连续滑动 =====
+
+			// 右侧唱片：向右滑出视野
+			const a1 = this.rightVinylButton.animate([
+				{ transform: `scale(${SIDE_SCALE}) translateX(${SIDE_TX}px)`, opacity: 0.7 },
+				{ transform: `scale(0.4) translateX(${(SIDE_TX + stepC2R * 1.4) / 0.4}px)`, opacity: 0 },
+			], { duration: DURATION, easing: EASING, fill: "forwards" });
+
+			// 中间唱片：滑向右侧位置并缩小
+			const a2 = centerDisc.animate([
+				{ transform: "scale(1)", opacity: 1 },
+				{ transform: `scale(${SIDE_SCALE * SIDE_W / CENTER_W}) translateX(${stepC2R / (SIDE_SCALE * SIDE_W / CENTER_W)}px)`, opacity: 0.7 },
+			], { duration: DURATION, easing: EASING, fill: "forwards" });
+
+			// 左侧唱片：滑向中间位置并放大
+			const a3 = this.leftVinylButton.animate([
+				{ transform: `scale(${SIDE_SCALE}) translateX(${-SIDE_TX}px)`, opacity: 0.7 },
+				{ transform: `scale(${CENTER_W / SIDE_W}) translateX(${(stepL2C - SIDE_TX) / (CENTER_W / SIDE_W)}px)`, opacity: 1 },
+			], { duration: DURATION, easing: EASING, fill: "forwards" });
+
+			this.carouselAnimations = [a1, a2, a3];
+
+			this.carouselTimer = window.setTimeout(() => {
+				a1.cancel();
+				a2.cancel();
+				a3.cancel();
+
+				this.pendingCenterUpdate = false;
+				if (this.pendingTrackData) {
+					this.vinylPlayer.resetRotation();
+					this.vinylPlayer.setTrack(this.pendingTrackData);
+					this.pendingTrackData = null;
+				}
+				this.updateSideVinyl(this.leftVinylButton, prevTrack);
+				this.updateSideVinyl(this.rightVinylButton, nextTrack);
+
+				// 新左侧唱片从左侧滑入
+				const enterAnim = this.leftVinylButton.animate([
+					{ transform: `scale(0.4) translateX(${(-stepL2C * 0.7 - SIDE_TX) / 0.4}px)`, opacity: 0 },
+					{ transform: `scale(${SIDE_SCALE}) translateX(${-SIDE_TX}px)`, opacity: 0.7 },
+				], { duration: ENTER_DUR, easing: ENTER_EASING });
+
+				this.carouselAnimations = [enterAnim];
+				this.carouselTimer = window.setTimeout(() => {
+					this.restoreCarouselStyles(centerDisc);
+				}, ENTER_DUR + 50);
+			}, DURATION);
+		}
+	}
+
+	/**
+	 * 恢复轮播动画后的 CSS 状态
+	 */
+	private restoreCarouselStyles(centerDisc: HTMLElement): void {
+		this.leftVinylButton.style.transition = "";
+		this.rightVinylButton.style.transition = "";
+		centerDisc.style.transition = "";
+		this.leftVinylButton.style.pointerEvents = "";
+		this.rightVinylButton.style.pointerEvents = "";
+		this.carouselAnimations = [];
+		this.carouselTimer = null;
+	}
+
+	/**
+	 * 取消正在进行的轮播动画，恢复元素状态
+	 */
+	private cancelCarouselAnimations(): void {
+		if (this.carouselTimer) {
+			clearTimeout(this.carouselTimer);
+			this.carouselTimer = null;
+		}
+		this.carouselAnimations.forEach((a) => a.cancel());
+		this.carouselAnimations = [];
+		// 立即应用缓冲内容，防止快速连按时显示过期内容
+		if (this.pendingTrackData) {
+			this.vinylPlayer.resetRotation();
+			this.vinylPlayer.setTrack(this.pendingTrackData);
+			this.pendingTrackData = null;
+		}
+		this.pendingCenterUpdate = false;
+		this.leftVinylButton.style.transition = "";
+		this.rightVinylButton.style.transition = "";
+		this.leftVinylButton.style.pointerEvents = "";
+		this.rightVinylButton.style.pointerEvents = "";
+		const centerDisc = this.controlsEl.querySelector(".vinyl-disc") as HTMLElement;
+		if (centerDisc) centerDisc.style.transition = "";
 	}
 
 	/**
@@ -806,6 +1013,22 @@ export class MusicHubComponent {
 			coverEl.style.backgroundImage = "";
 			coverEl.style.opacity = "0";
 		}
+	}
+
+	/**
+	 * 创建侧边唱片的内部结构（与中间唱片一致）
+	 */
+	private createSideVinylStructure(button: HTMLButtonElement): void {
+		const disc = button.createEl("div", { cls: "hub-side-vinyl-disc" });
+		// 音轨纹路
+		for (let i = 0; i < 3; i++) {
+			disc.createEl("div", { cls: `hub-side-groove hub-side-groove-${i + 1}` });
+		}
+		// 高光效果
+		disc.createEl("div", { cls: "hub-side-shine" });
+		// 封面容器
+		const coverContainer = disc.createEl("div", { cls: "hub-side-cover-container" });
+		coverContainer.createEl("div", { cls: "hub-side-vinyl-cover" });
 	}
 
 	/**

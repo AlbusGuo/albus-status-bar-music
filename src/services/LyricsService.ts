@@ -170,10 +170,66 @@ export class LyricsService {
 			return null;
 		}
 
+		// 合并双语歌词
+		const mergedLines = this.mergeBilingualLines(lines);
+		
+		// 计算每行结束时间
+		this.computeEndTimes(mergedLines);
+
 		return {
-			lines,
+			lines: mergedLines,
+			hasBilingual: mergedLines.some(l => !!l.translation),
 			...metaData,
 		};
+	}
+
+	/**
+	 * 合并双语歌词行
+	 */
+	private mergeBilingualLines(lines: LyricLine[]): LyricLine[] {
+		const merged: LyricLine[] = [];
+		let i = 0;
+		
+		while (i < lines.length) {
+			const current = lines[i];
+			
+			// 检查下一行是否有相同的时间戳（双语）
+			if (i + 1 < lines.length && Math.abs(lines[i + 1].time - current.time) < 0.01) {
+				merged.push({
+					...current,
+					translation: lines[i + 1].text,
+				});
+				i += 2;
+			} else {
+				// 检查 // 分隔符
+				const parts = current.text.split('//').map(s => s.trim());
+				if (parts.length === 2 && parts[1]) {
+					merged.push({
+						...current,
+						text: parts[0],
+						translation: parts[1],
+					});
+				} else {
+					merged.push(current);
+				}
+				i++;
+			}
+		}
+		
+		return merged;
+	}
+
+	/**
+	 * 计算每行的结束时间
+	 */
+	private computeEndTimes(lines: LyricLine[]): void {
+		for (let i = 0; i < lines.length; i++) {
+			if (i + 1 < lines.length) {
+				lines[i].endTime = lines[i + 1].time;
+			} else {
+				lines[i].endTime = lines[i].time + 5;
+			}
+		}
 	}
 
 	/**

@@ -122,6 +122,15 @@
 	color: var(--text-on-accent) !important;
 }
 
+.statusbar-lyrics-button.active-floating {
+	background: var(--interactive-accent) !important;
+	opacity: 0.75;
+}
+
+.statusbar-lyrics-button.active-floating .svg-icon {
+	color: var(--text-on-accent) !important;
+}
+
 @keyframes spin {
 	from {
 		transform: rotate(0deg);

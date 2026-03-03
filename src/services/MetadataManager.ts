@@ -61,7 +61,7 @@ export class MetadataManager {
 	/**
 	 * 从设置中初始化缓存（轻量级初始化）
 	 */
-initializeFromSettings(settings: PluginSettings): void {
+	initializeFromSettings(settings: PluginSettings): void {
 		this.cache.clear();
 		this.isInitialized = false;
 		this.processedTracks = 0;
@@ -69,30 +69,21 @@ initializeFromSettings(settings: PluginSettings): void {
 		if (settings.metadata) {
 			this.totalTracks = Object.keys(settings.metadata).length;
 			
-			Object.entries(settings.metadata).forEach(([path, metadata]) => {
-				// 智能初始化：过滤掉失效的blob URL，只保留有效的封面数据
-				let validCover = metadata.cover;
-				
-				// 如果是blob URL，在初始化时设为null，避免加载错误
-				if (validCover && validCover.startsWith('blob:')) {
-					validCover = null; // blob URL会在refreshMetadata时重新生成
-				}
-				
+			for (const [path, metadata] of Object.entries(settings.metadata)) {
 				const fullMetadata: TrackMetadata = {
 					title: metadata.title,
 					artist: metadata.artist,
 					album: metadata.album,
-					cover: validCover, // 只保留有效的封面数据
-					lyrics: metadata.lyrics || null // 保留歌词数据
+					cover: metadata.cover || null,
+					lyrics: metadata.lyrics || null
 				};
 				this.cache.set(path, fullMetadata);
 				this.processedTracks++;
-			});
+			}
 		} else {
 			this.totalTracks = 0;
 		}
 		
-		// 标记为已初始化
 		this.isInitialized = true;
 	}
 
@@ -111,163 +102,106 @@ initializeFromSettings(settings: PluginSettings): void {
 
 	/**
 	 * 扫描并提取所有音乐文件的元数据
+	 * 已缓存且完整的文件直接跳过，仅处理新增或不完整的文件
 	 */
 	async refreshAllMetadata(musicFolderPaths: string[]): Promise<void> {
-		// 开始完整元数据刷新
-		
 		const validFolders = musicFolderPaths.filter(p => p && p.trim() !== "");
 		if (validFolders.length === 0) {
-			// 无有效音乐文件夹
 			return;
 		}
 
-		// 获取现有数据（从data.json）
-		const existingData = await this.loadExistingData();
-		
-		// 不清空现有缓存，保留已有数据
-		this.isDirty = true;
-
-		// 获取所有音乐文件
 		const allFiles = this.app.vault.getFiles();
 		const musicFiles: TFile[] = [];
 
-		validFolders.forEach(folderPath => {
+		for (const folderPath of validFolders) {
 			const normalizedPath = normalizePath(folderPath);
-			allFiles.forEach(file => {
+			for (const file of allFiles) {
 				if (file.path.startsWith(normalizedPath) && isSupportedAudioFile(file.name)) {
 					musicFiles.push(file);
 				}
-			});
-		});
+			}
+		}
 
-		// 发现音乐文件
-
-		// 批量处理所有文件，等待全部完成后再更新UI
 		this.totalTracks = musicFiles.length;
 		this.processedTracks = 0;
 		
-		// 如果没有音乐文件，直接标记完成
 		if (this.totalTracks === 0) {
 			this.isInitialized = true;
-			if (this.onProgressUpdate) {
-				this.onProgressUpdate(0, 0);
-			}
+			this.onProgressUpdate?.(0, 0);
 			return;
 		}
 		
-		// 通知初始进度
-		if (this.onProgressUpdate) {
-			this.onProgressUpdate(0, this.totalTracks);
-		}
-		
-		const processingPromises: Promise<void>[] = [];
-		let processedCount = 0;
-		let skippedCount = 0;
+		this.onProgressUpdate?.(0, this.totalTracks);
 
+		// 分离：已缓存完整的文件 vs 需要处理的文件
+		const filesToProcess: TFile[] = [];
 		for (const file of musicFiles) {
-			const processingPromise = this.processFileIfNeeded(file, existingData);
-			processingPromise.then(() => {
-				processedCount++;
-				this.processedTracks = processedCount;
-				// 通知进度更新
-				if (this.onProgressUpdate) {
-					this.onProgressUpdate(this.processedTracks, this.totalTracks);
-				}
-			}).catch(() => {
-				// 即使出错也算作处理完成
-				processedCount++;
-				this.processedTracks = processedCount;
-				// 通知进度更新
-				if (this.onProgressUpdate) {
-					this.onProgressUpdate(this.processedTracks, this.totalTracks);
-				}
-			});
-			processingPromises.push(processingPromise);
-		}
-
-		// 等待所有文件处理完成
-		await Promise.all(processingPromises);
-
-		// 统计跳过的文件数量
-		for (const file of musicFiles) {
-			if (existingData.metadata && existingData.metadata[file.path]) {
-				skippedCount++;
+			const cached = this.cache.get(file.path);
+			if (cached?.title && cached?.artist && cached?.cover && !cached.cover.startsWith('blob:')) {
+				// 缓存完整，直接跳过
+				this.processedTracks++;
+			} else {
+				filesToProcess.push(file);
 			}
 		}
+		
+		this.onProgressUpdate?.(this.processedTracks, this.totalTracks);
 
-		// 文件处理完成
+		// 仅处理不完整或新增的文件
+		if (filesToProcess.length > 0) {
+			this.isDirty = true;
+			const concurrencyLimit = 10;
+			
+			for (let i = 0; i < filesToProcess.length; i += concurrencyLimit) {
+				const batch = filesToProcess.slice(i, i + concurrencyLimit);
+				await Promise.all(batch.map(async (file) => {
+					try {
+						await this.processFile(file);
+					} catch {
+						// 错误已在 processFile 中处理
+					}
+					this.processedTracks++;
+					this.onProgressUpdate?.(this.processedTracks, this.totalTracks);
+				}));
+			}
+			
+			this.scheduleSave();
+		}
 
-		// 所有文件处理完成后，保存设置
 		this.isInitialized = true;
-		this.scheduleSave();
-		
-		// 通知完成
-		if (this.onProgressUpdate) {
-			this.onProgressUpdate(this.totalTracks, this.totalTracks);
-		}
+		this.onProgressUpdate?.(this.totalTracks, this.totalTracks);
 	}
 
 	/**
-	 * 加载现有数据
+	 * 处理单个文件的元数据提取
 	 */
-	private async loadExistingData(): Promise<any> {
+	private async processFile(file: TFile): Promise<void> {
 		try {
-			// 尝试读取插件数据文件
-			const configDir = this.app.vault.configDir;
-			const dataPath = `${configDir}/plugins/albus-status-bar-music/data.json`;
+			const existing = this.cache.get(file.path);
 			
-			const dataFile = this.app.vault.getAbstractFileByPath(dataPath);
-			if (dataFile instanceof TFile) {
-				const content = await this.app.vault.read(dataFile);
-				return JSON.parse(content);
+			if (existing?.title && existing?.artist) {
+				// 有部分数据（缺封面），仅补充缺失部分
+				const metadata = await this.extractFileMetadata(file);
+				this.cache.set(file.path, {
+					title: existing.title,
+					artist: existing.artist,
+					album: existing.album || metadata.album,
+					cover: metadata.cover,
+					lyrics: existing.lyrics || metadata.lyrics || null
+				});
+			} else {
+				// 完全新的文件，全量提取
+				const metadata = await this.extractFileMetadata(file);
+				this.cache.set(file.path, metadata);
 			}
-		} catch (error) {
-			console.warn('MetadataManager: 无法加载现有数据，将重新处理所有文件:', error);
-		}
-		
-		return { metadata: {} };
-	}
-
-	/**
-	 * 根据需要处理文件
-	 */
-	private async processFileIfNeeded(file: TFile, existingData: any): Promise<void> {
-		try {
-			// 检查文件是否已存在于现有数据中
-			if (existingData.metadata && existingData.metadata[file.path]) {
-				const existingMetadata = existingData.metadata[file.path];
-				
-				// 验证现有数据的完整性
-				if (existingMetadata.title && existingMetadata.artist) {
-					// 数据完整，直接使用现有数据
-					const metadata: TrackMetadata = {
-						title: existingMetadata.title,
-						artist: existingMetadata.artist,
-						album: existingMetadata.album || "未知专辑",
-						cover: existingMetadata.cover || null,
-						lyrics: existingMetadata.lyrics || null // 保留歌词数据
-					};
-					
-					this.cache.set(file.path, metadata);
-					return; // 跳过重新处理
-				}
-			}
-
-			// 文件不存在或数据不完整，需要重新处理
-			const metadata = await this.extractFileMetadata(file);
-			this.cache.set(file.path, metadata);
-			
-		} catch (error) {
-			console.error(`MetadataManager: 处理文件失败 ${file.path}:`, error);
-			// 添加默认元数据
-			const defaultMetadata: TrackMetadata = {
+		} catch {
+			this.cache.set(file.path, {
 				title: file.basename,
 				artist: "未知艺术家",
 				album: "未知专辑",
 				cover: null,
-				lyrics: null // 添加歌词字段
-			};
-			this.cache.set(file.path, defaultMetadata);
+				lyrics: null
+			});
 		}
 	}
 
@@ -276,9 +210,7 @@ initializeFromSettings(settings: PluginSettings): void {
 	 */
 	private async extractFileMetadata(file: TFile): Promise<TrackMetadata> {
 		const arrayBuffer = await this.app.vault.readBinary(file);
-		const metadata = await this.parser.extractMetadata(arrayBuffer);
-		
-		return metadata;
+		return this.parser.extractMetadata(arrayBuffer);
 	}
 
 	
@@ -291,24 +223,6 @@ initializeFromSettings(settings: PluginSettings): void {
 	}
 
 	
-
-	/**
-	 * 为单个文件加载封面
-	 */
-	private async loadCoverForFile(filePath: string): Promise<void> {
-		try {
-			const file = this.app.vault.getAbstractFileByPath(filePath);
-			if (file instanceof TFile) {
-				const metadata = await this.extractFileMetadata(file);
-				const existingMetadata = this.cache.get(filePath);
-				if (existingMetadata && metadata.cover) {
-					existingMetadata.cover = metadata.cover;
-				}
-			}
-		} catch (error) {
-			console.warn(`Failed to load cover for ${filePath}:`, error);
-		}
-	}
 
 	/**
 	 * 获取所有元数据
@@ -329,37 +243,26 @@ initializeFromSettings(settings: PluginSettings): void {
 	 */
 	handleFileChange(filePath: string, type: 'create' | 'delete' | 'modify'): void {
 		const isMusicFile = isSupportedAudioFile(filePath.split('/').pop() || '');
-		
-		if (!isMusicFile) {
-			return;
-		}
+		if (!isMusicFile) return;
 
 		this.isDirty = true;
 
-		switch (type) {
-			case 'delete':
-				this.cache.delete(filePath);
-				// Removed metadata for deleted file
-				this.scheduleSave(); // 立即保存删除的元数据
-				break;
-			
-			case 'create':
-			case 'modify':
-				// 延迟处理，确保文件已完全写入
-				setTimeout(async () => {
-					try {
-						const file = this.app.vault.getAbstractFileByPath(filePath);
-						if (file instanceof TFile) {
-							const metadata = await this.extractFileMetadata(file);
-							this.cache.set(filePath, metadata);
-							// Updated metadata for file
-							this.scheduleSave(); // 立即保存更新的元数据
-						}
-					} catch (error) {
-						console.error(`MetadataManager: Failed to update metadata for ${filePath}:`, error);
+		if (type === 'delete') {
+			this.cache.delete(filePath);
+			this.scheduleSave();
+		} else {
+			setTimeout(async () => {
+				try {
+					const file = this.app.vault.getAbstractFileByPath(filePath);
+					if (file instanceof TFile) {
+						const metadata = await this.extractFileMetadata(file);
+						this.cache.set(filePath, metadata);
+						this.scheduleSave();
 					}
-				}, 500);
-				break;
+				} catch {
+					// Failed to update metadata
+				}
+			}, 500);
 		}
 	}
 

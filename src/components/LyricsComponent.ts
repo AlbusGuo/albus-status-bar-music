@@ -11,18 +11,20 @@ export class LyricsComponent extends Component {
 	private currentLineIndex: number = -1;
 	private _isVisible: boolean = false; // 改为私有变量
 	private isDragging: boolean = false;
-	private isLocked: boolean = false; // 锁定状态
+	private isLocked: boolean = true; // 默认锁定状态
 	private dragOffset = { x: 0, y: 0 };
 	private displayOptions: LyricsDisplayOptions = {
-		showTranslation: false,
+		showTranslation: true,
 		highlightCurrentLine: true,
 		autoScroll: true,
 		fontSize: 16,
 	};
-	private isFloating: boolean = true; // 是否为悬浮模式
+	private isFloating: boolean = true;
 	private boundHandleDragMove: ((e: MouseEvent) => void) | null = null;
 	private boundHandleDragEnd: ((e: MouseEvent) => void) | null = null;
 	private boundHandleGlobalDoubleClick: ((e: MouseEvent) => void) | null = null;
+	private highlightColorDark: string = "";
+	private highlightColorLight: string = "";
 
 	constructor(containerEl?: HTMLElement) {
 		super();
@@ -58,7 +60,7 @@ export class LyricsComponent extends Component {
 			this.lockButton = controlBar.createDiv({
 				cls: "lyrics-lock-button",
 			});
-			setIcon(this.lockButton, "lock-open");
+			setIcon(this.lockButton, "lock");
 
 			// 歌词文本容器
 			this.lyricsText = this.lyricsBar.createDiv({
@@ -68,6 +70,10 @@ export class LyricsComponent extends Component {
 
 			// 设置初始位置
 			this.setDefaultPosition();
+
+			// 默认锁定状态
+			this.lyricsBar.addClass("locked");
+			this.dragHandle.style.cursor = "default";
 		} else {
 			// 内嵌模式：使用传入的容器
 			this.lyricsBar = this.containerEl!;
@@ -229,8 +235,20 @@ export class LyricsComponent extends Component {
 
 	/**
 	 * 设置歌词内容
+	 * 如果歌词与当前一致（同一首歌），不重置位置
 	 */
 	setLyrics(lyrics: ParsedLyrics | null): void {
+		// 判断歌词是否发生了变化
+		const isSameLyrics = this.currentLyrics && lyrics &&
+			this.currentLyrics.lines.length === lyrics.lines.length &&
+			this.currentLyrics.lines.length > 0 &&
+			this.currentLyrics.lines[0].text === lyrics.lines[0].text;
+
+		if (isSameLyrics) {
+			// 同一首歌的歌词，不重置位置
+			return;
+		}
+
 		this.currentLyrics = lyrics;
 		this.currentLineIndex = -1;
 		this.renderLyrics();
@@ -400,8 +418,8 @@ export class LyricsComponent extends Component {
 			text: line.text,
 		});
 
-		// 如果有翻译且开启了翻译显示
-		if (line.translation && this.displayOptions.showTranslation) {
+		// 如果有翻译，始终显示（双语歌词支持）
+		if (line.translation) {
 			lineEl.createDiv({
 				cls: "music-lyrics-translation",
 				text: line.translation,
@@ -471,8 +489,14 @@ export class LyricsComponent extends Component {
 			return;
 		}
 
+		// 非顺序跳转直接重新渲染
+		if (newIndex - prevIndex !== 1) {
+			this.lyricsText.empty();
+			this.renderFloatingLyrics();
+			return;
+		}
+
 		const container = this.lyricsText.querySelector(".music-lyrics-lines") as HTMLElement;
-		
 		if (!container) {
 			this.lyricsText.empty();
 			this.renderFloatingLyrics();
@@ -480,8 +504,12 @@ export class LyricsComponent extends Component {
 		}
 
 		const totalLines = this.currentLyrics.lines.length;
-		
-		// 先添加第四行（新的下一行）在底部
+
+		// 测量第一行实际高度（动态计算滑动距离，支持双语变高）
+		const firstLine = container.querySelector(".music-lyrics-line") as HTMLElement;
+		const slideHeight = firstLine ? firstLine.offsetHeight : 40;
+
+		// 添加新的下一行
 		const nextNextIdx = newIndex + 1;
 		if (nextNextIdx >= 0 && nextNextIdx < totalLines) {
 			const nextLine = this.currentLyrics.lines[nextNextIdx];
@@ -490,48 +518,41 @@ export class LyricsComponent extends Component {
 			const secondLine = this.currentLyrics.lines[1];
 			this.createLyricsLine(container, secondLine, 1, false);
 		} else {
-			const emptyLine = container.createDiv({
-				cls: "music-lyrics-line empty",
-			});
+			const emptyLine = container.createDiv({ cls: "music-lyrics-line empty" });
 			emptyLine.createDiv({ cls: "music-lyrics-text", text: "♪" });
 		}
-		
-		// 立即更新样式类（在动画开始前）
-		// 此时有4行：[0]=prev(将移除), [1]=current(变prev), [2]=next(变current), [3]=新行(next)
+
+		// 更新样式类
 		const allLines = container.querySelectorAll(".music-lyrics-line");
 		if (allLines.length >= 4) {
-			// 不管第0行，它即将被移除
-			// 第1行：current -> prev
 			allLines[1].removeClass("current");
 			allLines[1].addClass("prev");
-			
-			// 第2行：next -> current
 			allLines[2].removeClass("prev");
 			allLines[2].addClass("current");
-			
-			// 第3行：默认就是 next，不需要额外处理
 		}
-		
-		// 触发向上滑动动画
+
+		// 触发向上滑动动画（动态高度）
 		requestAnimationFrame(() => {
-			container.addClass("lyrics-slide-up");
+			container.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+			container.style.transform = `translateY(-${slideHeight}px)`;
 		});
-		
+
 		// 动画完成后处理
 		setTimeout(() => {
 			if (!this.currentLyrics) return;
-			
+
 			// 移除第一行
-			const firstLine = container.querySelector(".music-lyrics-line");
-			if (firstLine) {
-				firstLine.remove();
-			}
-			
-			// 立即重置位置（无过渡）
-			container.removeClass("lyrics-slide-up");
-			
+			const first = container.querySelector(".music-lyrics-line");
+			if (first) first.remove();
+
+			// 重置位置（无过渡）
+			container.style.transition = 'none';
+			container.style.transform = 'translateY(0)';
+			void container.offsetWidth;
+			container.style.transition = '';
+
 			container.style.fontSize = `${this.displayOptions.fontSize}px`;
-		}, 500);
+		}, 320);
 	}
 
 	/**
@@ -562,57 +583,28 @@ export class LyricsComponent extends Component {
 	}
 
 	/**
-	 * 设置显示选项
+	 * 设置自定义歌词颜色
 	 */
-	setDisplayOptions(options: Partial<LyricsDisplayOptions>): void {
-		this.displayOptions = { ...this.displayOptions, ...options };
-		this.renderLyrics();
+	setColors(darkColor: string, lightColor: string): void {
+		this.highlightColorDark = darkColor;
+		this.highlightColorLight = lightColor;
+		this.applyColors();
 	}
 
 	/**
-	 * 获取当前显示选项
+	 * 应用自定义颜色到歌词栏
 	 */
-	getDisplayOptions(): LyricsDisplayOptions {
-		return { ...this.displayOptions };
-	}
-
-	/**
-	 * 切换翻译显示
-	 */
-	toggleTranslation(): void {
-		this.displayOptions.showTranslation =
-			!this.displayOptions.showTranslation;
-		this.renderLyrics();
-	}
-
-	/**
-	 * 切换自动滚动
-	 */
-	toggleAutoScroll(): void {
-		this.displayOptions.autoScroll = !this.displayOptions.autoScroll;
-	}
-
-	/**
-	 * 设置字体大小
-	 */
-	setFontSize(size: number): void {
-		this.displayOptions.fontSize = Math.max(10, Math.min(24, size));
-		const contentEl = this.lyricsText.querySelector(
-			".music-lyrics-content"
-		) as HTMLElement;
-		if (contentEl) {
-			contentEl.style.fontSize = `${this.displayOptions.fontSize}px`;
+	private applyColors(): void {
+		if (this.highlightColorDark) {
+			this.lyricsBar.style.setProperty("--lyrics-active-color-dark", this.highlightColorDark);
+		} else {
+			this.lyricsBar.style.removeProperty("--lyrics-active-color-dark");
 		}
-	}
-
-	/**
-	 * 显示/隐藏歌词面板
-	 */
-	toggle(): void {
-		this.lyricsText.toggleClass(
-			"hidden",
-			!this.lyricsText.hasClass("hidden")
-		);
+		if (this.highlightColorLight) {
+			this.lyricsBar.style.setProperty("--lyrics-active-color-light", this.highlightColorLight);
+		} else {
+			this.lyricsBar.style.removeProperty("--lyrics-active-color-light");
+		}
 	}
 
 	/**
@@ -644,6 +636,10 @@ export class LyricsComponent extends Component {
 		this._isVisible = true;
 		if (this.isFloating) {
 			this.lyricsBar.show();
+			// 每次显示时自动进入锁定模式
+			if (!this.isLocked) {
+				this.toggleLock();
+			}
 		}
 	}
 

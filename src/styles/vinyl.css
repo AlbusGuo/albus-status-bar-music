@@ -4,7 +4,6 @@
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	margin-bottom: 16px;
 }
 
 .hub-progress-time-container {
@@ -26,54 +25,168 @@
 	margin: 8px;
 }
 
-/* 响应式设计 */
-@media (max-width: 600px) {
-	.hub-controls {
-		padding: 12px;
-		margin: 4px;
-	}
-	
-	.hub-vinyl-container {
-		margin-bottom: 12px;
-	}
-	
-	.hub-progress-time-container {
-		max-width: 250px;
-	}
+/* ========== 黑胶唱片核心样式 (from VinylPlayer) ========== */
+
+.vinyl-player {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 20px;
 }
 
-/* 黑胶唱片播放器动画增强 */
 .vinyl-disc {
+	width: 140px;
+	height: 140px;
+	border-radius: 50%;
+	position: relative;
+	transform-origin: center center;
+	cursor: pointer;
 	transition: box-shadow 0.3s ease;
+	box-shadow:
+		0 8px 32px rgba(0, 0, 0, 0.6),
+		inset 0 2px 4px rgba(255, 255, 255, 0.1),
+		inset 0 -2px 4px rgba(0, 0, 0, 0.8);
+	background:
+		radial-gradient(circle at 30% 30%,
+			rgba(40, 40, 40, 0.9) 0%,
+			rgba(20, 20, 20, 0.95) 30%,
+			rgba(0, 0, 0, 1) 60%,
+			rgba(0, 0, 0, 1) 100%),
+		linear-gradient(45deg,
+			rgba(0, 0, 0, 1) 0%,
+			rgba(10, 10, 10, 0.98) 50%,
+			rgba(0, 0, 0, 1) 100%);
+	overflow: hidden;
 }
 
 .vinyl-disc:hover {
-	box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+	box-shadow:
+		0 12px 40px rgba(0, 0, 0, 0.7),
+		inset 0 2px 6px rgba(255, 255, 255, 0.15),
+		inset 0 -2px 6px rgba(0, 0, 0, 0.9);
 }
 
-/* 中心标签动画 */
-.vinyl-center-label {
-	transition: transform 0.3s ease;
+.vinyl-groove {
+	position: absolute;
+	border-radius: 50%;
+	border: 0.5px solid rgba(255, 255, 255, 0.08);
+	box-shadow:
+		inset 0 1px 3px rgba(0, 0, 0, 0.9),
+		0 0 1px rgba(255, 255, 255, 0.05);
+	background: transparent;
 }
 
-.vinyl-disc:hover .vinyl-center-label {
-	transform: translate(-50%, -50%) scale(1.1);
+.vinyl-groove-1 {
+	top: 5%;
+	left: 5%;
+	width: 90%;
+	height: 90%;
 }
 
-/* 封面图片加载动画 */
+.vinyl-groove-2 {
+	top: 15%;
+	left: 15%;
+	width: 70%;
+	height: 70%;
+}
+
+.vinyl-groove-3 {
+	top: 25%;
+	left: 25%;
+	width: 50%;
+	height: 50%;
+}
+
+.vinyl-cover-container {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 90px;
+	height: 90px;
+	border-radius: 50%;
+	overflow: hidden;
+	z-index: 3;
+	box-shadow:
+		0 8px 24px rgba(0, 0, 0, 0.8),
+		inset 0 1px 2px rgba(255, 255, 255, 0.2),
+		inset 0 -1px 2px rgba(0, 0, 0, 0.8),
+		0 0 0 1px var(--interactive-accent);
+	border: 3px solid #0a0a0a;
+	background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+}
+
 .vinyl-cover {
+	width: 100%;
+	height: 100%;
+	background-color: var(--background-secondary);
+	background-size: cover;
+	background-position: center;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	transition: opacity 0.3s ease;
 }
 
-.vinyl-cover[style*="background-image"] {
-	opacity: 1;
+.vinyl-cover:not(.has-cover)::before {
+	content: "♪";
+	font-size: 24px;
+	color: #666666;
 }
 
-.vinyl-cover:not([style*="background-image"]) {
-	opacity: 0.7;
+.vinyl-cover:not(.has-cover) {
+	background: #1a1a1a;
 }
 
-/* 音轨纹路动画 */
+.vinyl-shine {
+	position: absolute;
+	top: 10%;
+	left: 15%;
+	width: 35%;
+	height: 35%;
+	border-radius: 50%;
+	background:
+		radial-gradient(circle at 40% 40%,
+			rgba(255, 255, 255, 0.4) 0%,
+			rgba(255, 255, 255, 0.2) 20%,
+			rgba(255, 255, 255, 0.1) 40%,
+			transparent 70%);
+	z-index: 2;
+	pointer-events: none;
+	mix-blend-mode: overlay;
+}
+
+.vinyl-shine::before {
+	content: '';
+	position: absolute;
+	top: 20%;
+	left: 25%;
+	width: 20%;
+	height: 20%;
+	border-radius: 50%;
+	background: radial-gradient(circle,
+		rgba(255, 255, 255, 0.3) 0%,
+		transparent 60%);
+}
+
+.vinyl-disc::before {
+	content: '';
+	position: absolute;
+	top: -2px;
+	left: -2px;
+	right: -2px;
+	bottom: -2px;
+	border-radius: 50%;
+	background: linear-gradient(45deg,
+		transparent 30%,
+		rgba(255, 255, 255, 0.1) 50%,
+		transparent 70%);
+	z-index: 1;
+	pointer-events: none;
+}
+
+/* ========== 唱片纹路动画 ========== */
+
 .vinyl-groove {
 	transition: border-color 0.3s ease;
 }
@@ -82,7 +195,6 @@
 	border-color: rgba(255, 255, 255, 0.15);
 }
 
-/* 高光效果动画 */
 .vinyl-shine {
 	opacity: 0.6;
 	transition: opacity 0.3s ease;
@@ -92,11 +204,29 @@
 	opacity: 0.8;
 }
 
-/* 黑胶唱片播放器整体布局优化 */
-.hub-vinyl-container {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	margin-bottom: 16px;
-}
+/* ========== 响应式设计 ========== */
 
+@media (max-width: 600px) {
+	.hub-controls {
+		padding: 12px;
+		margin: 4px;
+	}
+
+	.hub-vinyl-container {
+		margin-bottom: 12px;
+	}
+
+	.hub-progress-time-container {
+		max-width: 250px;
+	}
+
+	.vinyl-disc {
+		width: 110px;
+		height: 110px;
+	}
+
+	.vinyl-cover-container {
+		width: 70px;
+		height: 70px;
+	}
+}

@@ -1,5 +1,5 @@
 import { setIcon } from "obsidian";
-import { MusicTrack } from "../types";
+import { LyricsDisplayState, MusicTrack } from "../types";
 import { CSS_CLASSES, ICONS } from "../utils/constants";
 
 export class StatusBarComponent {
@@ -253,6 +253,23 @@ export class StatusBarComponent {
 			this.playPauseButton.hide();
 			this.nextButton.hide();
 			this.lyricsButton.hide();
+		}
+	}
+
+	/**
+	 * 设置歌词按钮激活状态（三段式）
+	 */
+	setLyricsButtonState(state: LyricsDisplayState): void {
+		this.lyricsButton.removeClass("active", "active-floating");
+		switch (state) {
+			case "statusbar":
+				this.lyricsButton.addClass("active");
+				break;
+			case "floating":
+				this.lyricsButton.addClass("active-floating");
+				break;
+			case "off":
+				break;
 		}
 	}
 

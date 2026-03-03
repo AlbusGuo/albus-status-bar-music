@@ -6,8 +6,12 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	favorites: [],
 	playbackMode: PLAYBACK_MODES[0] as PlaybackMode,
 	metadata: {},
-	showControlButtons: true, // 默认显示控制按钮
-	closeHubOnClickOutside: false, // 默认不自动关闭音乐中心
+	showControlButtons: true,
+	closeHubOnClickOutside: false,
+	volume: 1,
+	lyricsHighlightColorDark: "",
+	lyricsHighlightColorLight: "",
+	showLoadNotice: true,
 };
 
 /**
@@ -43,13 +47,6 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 /**
- * 异步延迟函数
- */
-export function delay(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
  * 防抖函数
  */
 export function debounce<T extends (...args: any[]) => void>(
@@ -82,40 +79,4 @@ export function throttle<T extends (...args: any[]) => void>(
 			setTimeout(() => (inThrottle = false), limit);
 		}
 	};
-}
-
-/**
- * 生成唯一ID
- */
-export function generateId(): string {
-	return Math.random().toString(36).substr(2, 9);
-}
-
-/**
- * 深度复制对象
- */
-export function deepClone<T>(obj: T): T {
-	if (obj === null || typeof obj !== "object") {
-		return obj;
-	}
-
-	if (obj instanceof Date) {
-		return new Date(obj.getTime()) as unknown as T;
-	}
-
-	if (obj instanceof Array) {
-		return obj.map((item) => deepClone(item)) as unknown as T;
-	}
-
-	if (typeof obj === "object") {
-		const cloned = {} as T;
-		for (const key in obj) {
-			if (Object.prototype.hasOwnProperty.call(obj, key)) {
-				cloned[key] = deepClone(obj[key]);
-			}
-		}
-		return cloned;
-	}
-
-	return obj;
 }

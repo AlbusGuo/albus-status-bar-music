@@ -19,13 +19,19 @@ export interface PluginSettings {
 	favorites: string[];
 	playbackMode: PlaybackMode;
 	metadata: Record<string, TrackMetadata>;
-	showControlButtons: boolean; // 是否显示状态栏控制按钮
-	closeHubOnClickOutside: boolean; // 点击外部是否关闭音乐中心
+	showControlButtons: boolean;
+	closeHubOnClickOutside: boolean;
+	volume: number;
+	lyricsHighlightColorDark: string;
+	lyricsHighlightColorLight: string;
+	showLoadNotice: boolean;
 }
 
 export type PlaybackMode = "loop" | "single" | "shuffle";
 
 export type CategoryType = "all" | "favorite" | string;
+
+export type LyricsDisplayState = "off" | "statusbar" | "floating";
 
 export interface AudioPlayerEvents {
 	onPlay: () => void;
@@ -44,24 +50,12 @@ export interface PlaylistManagerEvents {
 	onCategoryChange: (category: CategoryType) => void;
 }
 
-export interface ID3v2Header {
-	version: number;
-	flags: number;
-	size: number;
-}
-
-export interface ID3v2Frame {
-	id: string;
-	size: number;
-	flags: number;
-	data: Uint8Array;
-}
-
 // 歌词相关类型定义
 export interface LyricLine {
-	time: number; // 时间（秒）
-	text: string; // 歌词文本
-	translation?: string; // 翻译（可选）
+	time: number;
+	text: string;
+	translation?: string;
+	endTime?: number;
 }
 
 export interface ParsedLyrics {
@@ -69,7 +63,8 @@ export interface ParsedLyrics {
 	title?: string;
 	artist?: string;
 	album?: string;
-	offset?: number; // 偏移量（毫秒）
+	offset?: number;
+	hasBilingual?: boolean;
 }
 
 export interface LyricsDisplayOptions {

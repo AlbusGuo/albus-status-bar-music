@@ -4,30 +4,11 @@ export const PLAYBACK_MODES: readonly string[] = [
 	"shuffle",
 ] as const;
 
-export const SUPPORTED_AUDIO_FORMATS = [
-	"flac",
-	"mp3",
-	"wav",
-	"m4a",
-	"ogg",
-] as const;
-
 export const DEFAULT_METADATA = {
 	title: "未知标题",
 	artist: "未知艺术家",
 	album: "未知专辑",
 	cover: null,
-} as const;
-
-export const UI_CONSTANTS = {
-	STATUS_BAR_WIDTH: 150,
-	STATUS_BAR_HEIGHT: 30,
-	BUTTON_SIZE: 30,
-	HUB_WIDTH: 300,
-	MAX_PLAYLIST_HEIGHT: 300,
-	COVER_SIZE: 40,
-	PROGRESS_UPDATE_INTERVAL: 100,
-	SCROLL_ANIMATION_DURATION: 10000,
 } as const;
 
 export const CSS_CLASSES = {

@@ -3,14 +3,12 @@ import { TrackMetadata } from "../types";
 import { DEFAULT_METADATA } from "../utils/constants";
 
 export class MetadataParser {
-	private blobUrls = new Map<string, Blob>();
 
 	/**
-	 * 从音频文件中提取元数据
+	 * 从 ArrayBuffer 提取元数据
 	 */
 	async extractMetadata(arrayBuffer: ArrayBuffer): Promise<TrackMetadata> {
 		try {
-			// 使用 music-metadata 库提取元数据
 			const metadata = await mm.parseBuffer(Buffer.from(arrayBuffer));
 
 			return {
@@ -21,7 +19,6 @@ export class MetadataParser {
 				lyrics: this.extractLyrics(metadata),
 			};
 		} catch (error) {
-			console.error("Failed to extract metadata:", error);
 			return { ...DEFAULT_METADATA };
 		}
 	}
@@ -37,22 +34,47 @@ export class MetadataParser {
 		}
 
 		try {
-			// 使用第一张图片（通常是封面）
 			const picture = pictures[0];
-
-			// 创建一个新的 Uint8Array 来避免类型问题
 			const uint8Array = new Uint8Array(picture.data);
 			const blob = new Blob([uint8Array], { type: picture.format });
-			const blobUrl = URL.createObjectURL(blob);
+			const tempUrl = URL.createObjectURL(blob);
 
-			// 存储引用以便清理
-			this.blobUrls.set(blobUrl, blob);
+			try {
+				const img = await this.loadImage(tempUrl);
+				const maxSize = 200;
+				let { width, height } = img;
+				if (width > maxSize || height > maxSize) {
+					const ratio = Math.min(maxSize / width, maxSize / height);
+					width = Math.round(width * ratio);
+					height = Math.round(height * ratio);
+				}
 
-			return blobUrl;
+				const canvas = document.createElement("canvas");
+				canvas.width = width;
+				canvas.height = height;
+				const ctx = canvas.getContext("2d");
+				if (!ctx) return null;
+				ctx.drawImage(img, 0, 0, width, height);
+
+				return canvas.toDataURL("image/jpeg", 0.75);
+			} finally {
+				URL.revokeObjectURL(tempUrl);
+			}
 		} catch (error) {
-			console.warn("Failed to extract cover:", error);
 			return null;
 		}
+	}
+
+	/**
+	 * 加载图片
+	 */
+	private loadImage(src: string): Promise<HTMLImageElement> {
+		return new Promise((resolve, reject) => {
+			const img = new Image();
+			img.onload = () => resolve(img);
+			img.onerror = reject;
+			img.src = src;
+		});
 	}
 
 	/**
@@ -230,12 +252,9 @@ export class MetadataParser {
 	}
 
 	/**
-	 * 清理Blob URLs
+	 * 清理资源
 	 */
 	cleanup(): void {
-		this.blobUrls.forEach((blob, url) => {
-			URL.revokeObjectURL(url);
-		});
-		this.blobUrls.clear();
+		// No persistent resources to clean up with base64 data URIs
 	}
 }
