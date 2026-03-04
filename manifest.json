@@ -1,7 +1,7 @@
 {
 	"id": "albus-status-bar-music",
 	"name": "Status Bar Music",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "1.11.4",
 	"description": "Play and manage music directly from Obsidian status bar with lyrics, playlists and album art.",
 	"author": "Albus & RavenHogWarts",
