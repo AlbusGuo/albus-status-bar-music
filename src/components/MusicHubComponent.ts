@@ -973,14 +973,16 @@ export class MusicHubComponent {
 	 * 取消正在进行的轮播动画，恢复元素状态
 	 */
 	private cancelCarouselAnimations(): void {
+		const hadRunningAnimation = !!this.carouselTimer;
 		if (this.carouselTimer) {
 			clearTimeout(this.carouselTimer);
 			this.carouselTimer = null;
 		}
 		this.carouselAnimations.forEach((a) => a.cancel());
 		this.carouselAnimations = [];
-		// 立即应用缓冲内容，防止快速连按时显示过期内容
-		if (this.pendingTrackData) {
+		// 只在确实取消了正在运行的动画时，才立即应用缓冲内容
+		// 避免在新动画开始前误将刚缓冲的数据提前应用到中心唱片
+		if (hadRunningAnimation && this.pendingTrackData) {
 			this.vinylPlayer.resetRotation();
 			this.vinylPlayer.setTrack(this.pendingTrackData);
 			this.pendingTrackData = null;
