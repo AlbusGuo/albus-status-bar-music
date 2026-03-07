@@ -124,8 +124,3 @@
 - 提交 Bug 或功能建议：[GitHub Issues](https://github.com/AlbusGuo/albus-status-bar-music/issues)
 - 代码贡献：Fork → 修改 → Pull Request
 
----
-
-## 许可证
-
-[MIT License](LICENSE)
