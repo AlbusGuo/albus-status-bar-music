@@ -16,11 +16,11 @@
 
 /* 悬浮歌词CSS变量：根据主题自动选择对应的高亮色 */
 .theme-dark .floating-lyrics {
-	--lyrics-active-color: var(--lyrics-active-color-dark, #4fc3f7);
+	--lyrics-active-color: var(--lyrics-active-color-dark, var(--interactive-accent));
 }
 
 .theme-light .floating-lyrics {
-	--lyrics-active-color: var(--lyrics-active-color-light, #0288d1);
+	--lyrics-active-color: var(--lyrics-active-color-light, var(--interactive-accent));
 }
 
 /* ========== 悬浮歌词栏样式 ========== */

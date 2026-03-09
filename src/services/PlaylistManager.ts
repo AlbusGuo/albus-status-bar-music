@@ -22,6 +22,7 @@ export class PlaylistManager {
 	private searchQuery: string = "";
 	private playlists: Map<string, MusicTrack[]> = new Map();
 	private events: Partial<PlaylistManagerEvents> = {};
+	private playHistory: MusicTrack[] = [];
 
 	constructor(app: App, settings: PluginSettings, settingsRef?: () => PluginSettings) {
 		this.app = app;
@@ -269,13 +270,7 @@ export class PlaylistManager {
 			});
 		}
 
-		if (this.settings.playbackMode === "shuffle") {
-			this.viewPlaylist = [...sourcePlaylist].sort(
-				() => Math.random() - 0.5
-			);
-		} else {
-			this.viewPlaylist = sourcePlaylist;
-		}
+		this.viewPlaylist = sourcePlaylist;
 
 		// 如果当前曲目不在新列表中，加载第一首
 		if (
@@ -351,6 +346,22 @@ export class PlaylistManager {
 	playNext(): MusicTrack | null {
 		if (this.viewPlaylist.length === 0) return null;
 
+		if (this.settings.playbackMode === "shuffle") {
+			// 随机模式：真正随机选取，不打乱列表
+			if (this.currentTrack) {
+				this.playHistory.push(this.currentTrack);
+				if (this.playHistory.length > 100) {
+					this.playHistory = this.playHistory.slice(-100);
+				}
+			}
+			const candidates = this.viewPlaylist.filter(t => t.id !== this.currentTrack?.id);
+			const pool = candidates.length > 0 ? candidates : this.viewPlaylist;
+			const randomIndex = Math.floor(Math.random() * pool.length);
+			const nextTrack = pool[randomIndex];
+			this.loadTrack(nextTrack, true);
+			return nextTrack;
+		}
+
 		const currentIndex = this.currentTrack
 			? this.viewPlaylist.findIndex((t) => t.id === this.currentTrack!.id)
 			: -1;
@@ -367,6 +378,13 @@ export class PlaylistManager {
 	 */
 	playPrevious(): MusicTrack | null {
 		if (this.viewPlaylist.length === 0) return null;
+
+		if (this.settings.playbackMode === "shuffle" && this.playHistory.length > 0) {
+			// 随机模式：回退到播放历史中的上一首
+			const prevTrack = this.playHistory.pop()!;
+			this.loadTrack(prevTrack, true);
+			return prevTrack;
+		}
 
 		const currentIndex = this.currentTrack
 			? this.viewPlaylist.findIndex((t) => t.id === this.currentTrack!.id)

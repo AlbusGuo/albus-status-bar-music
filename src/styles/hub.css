@@ -589,9 +589,9 @@
 	align-items: center;
 	justify-content: center;
 	gap: 20px;
-	padding: 12px 0;
+	padding: 20px 0 12px;
 	position: relative;
-	height: 110px;
+	overflow: visible;
 }
 
 /* 侧边唱片按钮 - 与中间黑胶唱片一致的样式 */
@@ -616,7 +616,7 @@
 	transform: scale(1.08);
 }
 
-/* 黑胶唱片圆盘 - 与 VinylPlayer 一致 */
+/* 黑胶唱片圆盘 */
 .hub-side-vinyl-disc {
 	width: 100%;
 	height: 100%;
@@ -624,66 +624,17 @@
 	position: relative;
 	overflow: hidden;
 	background:
-		radial-gradient(circle at 30% 30%,
-			rgba(40, 40, 40, 0.9) 0%,
-			rgba(20, 20, 20, 0.95) 30%,
-			rgba(0, 0, 0, 1) 60%,
-			rgba(0, 0, 0, 1) 100%);
+		repeating-radial-gradient(
+			circle at center,
+			transparent 0px,
+			transparent 1px,
+			rgba(255, 255, 255, 0.03) 1px,
+			rgba(255, 255, 255, 0.03) 1.5px
+		),
+		radial-gradient(circle at center, #1a1a1a 0%, #111 60%, #0a0a0a 100%);
 	box-shadow:
-		0 4px 16px rgba(0, 0, 0, 0.5),
-		inset 0 1px 3px rgba(255, 255, 255, 0.1),
-		inset 0 -1px 3px rgba(0, 0, 0, 0.7);
-}
-
-/* 侧边唱片音轨纹路 */
-.hub-side-groove {
-	position: absolute;
-	border-radius: 50%;
-	border: 0.5px solid rgba(255, 255, 255, 0.08);
-	box-shadow:
-		inset 0 1px 2px rgba(0, 0, 0, 0.8),
-		0 0 1px rgba(255, 255, 255, 0.04);
-	background: transparent;
-}
-
-.hub-side-groove-1 {
-	top: 5%;
-	left: 5%;
-	width: 90%;
-	height: 90%;
-}
-
-.hub-side-groove-2 {
-	top: 15%;
-	left: 15%;
-	width: 70%;
-	height: 70%;
-}
-
-.hub-side-groove-3 {
-	top: 25%;
-	left: 25%;
-	width: 50%;
-	height: 50%;
-}
-
-/* 侧边唱片高光 */
-.hub-side-shine {
-	position: absolute;
-	top: 10%;
-	left: 15%;
-	width: 30%;
-	height: 30%;
-	border-radius: 50%;
-	background:
-		radial-gradient(circle at 40% 40%,
-			rgba(255, 255, 255, 0.3) 0%,
-			rgba(255, 255, 255, 0.15) 20%,
-			rgba(255, 255, 255, 0.05) 40%,
-			transparent 70%);
-	z-index: 2;
-	pointer-events: none;
-	mix-blend-mode: overlay;
+		0 2px 12px rgba(0, 0, 0, 0.4),
+		inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 /* 侧边唱片封面容器 */
@@ -692,17 +643,16 @@
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	width: 48px;
-	height: 48px;
+	width: 51px;
+	height: 51px;
 	border-radius: 50%;
 	overflow: hidden;
 	z-index: 3;
 	box-shadow:
-		0 4px 12px rgba(0, 0, 0, 0.6),
-		inset 0 1px 1px rgba(255, 255, 255, 0.15),
-		0 0 0 1px var(--interactive-accent);
+		0 0 0 1px var(--interactive-accent),
+		0 2px 8px rgba(0, 0, 0, 0.4);
 	border: 2px solid #0a0a0a;
-	background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+	background: #111;
 }
 
 /* 中心封面图片 */

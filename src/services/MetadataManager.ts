@@ -163,6 +163,8 @@ export class MetadataManager {
 					this.processedTracks++;
 					this.onProgressUpdate?.(this.processedTracks, this.totalTracks);
 				}));
+				// 每批次处理后让出主线程，避免阻塞 Obsidian 其他进程
+				await new Promise(resolve => setTimeout(resolve, 0));
 			}
 			
 			this.scheduleSave();

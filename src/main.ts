@@ -57,6 +57,9 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 */
 	private async initializePlugin(): Promise<void> {
 		try {
+			// 让出主线程，确保 Obsidian 其他进程优先完成初始化
+			await new Promise(resolve => setTimeout(resolve, 0));
+
 			this.playlistManager.initializeMetadata(this.settings);
 			this.createStatusBar();
 
@@ -270,6 +273,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 		this.musicHub.on("onPrevious", async () => {
 			const prevTrack = this.playlistManager.playPrevious();
 			if (prevTrack) {
+				this.musicHub.scrollToCurrentTrack();
 				await this.audioPlayer.loadTrack(prevTrack);
 				await this.audioPlayer.play();
 			}
@@ -278,6 +282,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 		this.musicHub.on("onNext", async () => {
 			const nextTrack = this.playlistManager.playNext();
 			if (nextTrack) {
+				this.musicHub.scrollToCurrentTrack();
 				await this.audioPlayer.loadTrack(nextTrack);
 				await this.audioPlayer.play();
 			}
@@ -761,11 +766,16 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 */
 	applyLyricsColors(): void {
 		if (this.musicHub) {
-			// 传递深色和浅色两个颜色，由 CSS 根据当前主题自动选择
-			this.musicHub.setFloatingLyricsColors(
-				this.settings.lyricsHighlightColorDark,
-				this.settings.lyricsHighlightColorLight
-			);
+			if (this.settings.enableCustomLyricsColor) {
+				// 启用自定义颜色
+				this.musicHub.setFloatingLyricsColors(
+					this.settings.lyricsHighlightColorDark,
+					this.settings.lyricsHighlightColorLight
+				);
+			} else {
+				// 禁用自定义颜色，移除 CSS 变量让默认的 var(--interactive-accent) 生效
+				this.musicHub.setFloatingLyricsColors("", "");
+			}
 		}
 	}
 

@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 	showControlButtons: true,
 	closeHubOnClickOutside: false,
 	volume: 1,
+	enableCustomLyricsColor: false,
 	lyricsHighlightColorDark: "",
 	lyricsHighlightColorLight: "",
 	showLoadNotice: true,

@@ -129,21 +129,13 @@ export class SettingsTab extends PluginSettingTab {
 			.setHeading("歌词");
 
 		group.addSetting((s) => {
-			s.setName("浅色模式高亮色")
-				.setDesc("浅色主题下当前播放歌词的颜色，留空使用默认值。")
-				.addColorPicker((cp) => {
-					cp.setValue(this.settings.lyricsHighlightColorLight || "#0288d1")
+			s.setName("自定义歌词高亮色")
+				.setDesc("启用后可分别设置浅色/深色模式的歌词高亮颜色，关闭则使用主题强调色。")
+				.addToggle((toggle) => {
+					toggle
+						.setValue(this.settings.enableCustomLyricsColor)
 						.onChange(async (value) => {
-							this.settings.lyricsHighlightColorLight = value;
-							await this.saveCallback();
-							this.plugin.applyLyricsColors?.();
-						});
-				})
-				.addExtraButton((btn) => {
-					btn.setIcon("reset")
-						.setTooltip("恢复默认")
-						.onClick(async () => {
-							this.settings.lyricsHighlightColorLight = "";
+							this.settings.enableCustomLyricsColor = value;
 							await this.saveCallback();
 							this.plugin.applyLyricsColors?.();
 							this.display();
@@ -151,28 +143,53 @@ export class SettingsTab extends PluginSettingTab {
 				});
 		});
 
-		group.addSetting((s) => {
-			s.setName("深色模式高亮色")
-				.setDesc("深色主题下当前播放歌词的颜色，留空使用默认值。")
-				.addColorPicker((cp) => {
-					cp.setValue(this.settings.lyricsHighlightColorDark || "#4fc3f7")
-						.onChange(async (value) => {
-							this.settings.lyricsHighlightColorDark = value;
-							await this.saveCallback();
-							this.plugin.applyLyricsColors?.();
-						});
-				})
-				.addExtraButton((btn) => {
-					btn.setIcon("reset")
-						.setTooltip("恢复默认")
-						.onClick(async () => {
-							this.settings.lyricsHighlightColorDark = "";
-							await this.saveCallback();
-							this.plugin.applyLyricsColors?.();
-							this.display();
-						});
-				});
-		});
+		if (this.settings.enableCustomLyricsColor) {
+			group.addSetting((s) => {
+				s.setName("浅色模式高亮色")
+					.setDesc("浅色主题下当前播放歌词的颜色，留空使用默认值。")
+					.addColorPicker((cp) => {
+						cp.setValue(this.settings.lyricsHighlightColorLight || "#0288d1")
+							.onChange(async (value) => {
+								this.settings.lyricsHighlightColorLight = value;
+								await this.saveCallback();
+								this.plugin.applyLyricsColors?.();
+							});
+					})
+					.addExtraButton((btn) => {
+						btn.setIcon("reset")
+							.setTooltip("恢复默认")
+							.onClick(async () => {
+								this.settings.lyricsHighlightColorLight = "";
+								await this.saveCallback();
+								this.plugin.applyLyricsColors?.();
+								this.display();
+							});
+					});
+			});
+
+			group.addSetting((s) => {
+				s.setName("深色模式高亮色")
+					.setDesc("深色主题下当前播放歌词的颜色，留空使用默认值。")
+					.addColorPicker((cp) => {
+						cp.setValue(this.settings.lyricsHighlightColorDark || "#4fc3f7")
+							.onChange(async (value) => {
+								this.settings.lyricsHighlightColorDark = value;
+								await this.saveCallback();
+								this.plugin.applyLyricsColors?.();
+							});
+					})
+					.addExtraButton((btn) => {
+						btn.setIcon("reset")
+							.setTooltip("恢复默认")
+							.onClick(async () => {
+								this.settings.lyricsHighlightColorDark = "";
+								await this.saveCallback();
+								this.plugin.applyLyricsColors?.();
+								this.display();
+							});
+					});
+			});
+		}
 	}
 
 

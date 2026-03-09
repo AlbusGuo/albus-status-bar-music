@@ -31,7 +31,7 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 20px;
+	position: relative;
 }
 
 .vinyl-disc {
@@ -41,60 +41,46 @@
 	position: relative;
 	transform-origin: center center;
 	cursor: pointer;
-	transition: box-shadow 0.3s ease;
-	box-shadow:
-		0 8px 32px rgba(0, 0, 0, 0.6),
-		inset 0 2px 4px rgba(255, 255, 255, 0.1),
-		inset 0 -2px 4px rgba(0, 0, 0, 0.8);
 	background:
-		radial-gradient(circle at 30% 30%,
-			rgba(40, 40, 40, 0.9) 0%,
-			rgba(20, 20, 20, 0.95) 30%,
-			rgba(0, 0, 0, 1) 60%,
-			rgba(0, 0, 0, 1) 100%),
-		linear-gradient(45deg,
-			rgba(0, 0, 0, 1) 0%,
-			rgba(10, 10, 10, 0.98) 50%,
-			rgba(0, 0, 0, 1) 100%);
+		repeating-radial-gradient(
+			circle at center,
+			transparent 0px,
+			transparent 1.5px,
+			rgba(255, 255, 255, 0.03) 1.5px,
+			rgba(255, 255, 255, 0.03) 2.5px
+		),
+		radial-gradient(circle at center, #1a1a1a 0%, #111 60%, #0a0a0a 100%);
+	box-shadow:
+		0 4px 20px rgba(0, 0, 0, 0.5),
+		inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 	overflow: hidden;
+	transition: box-shadow 0.3s ease;
 }
 
 .vinyl-disc:hover {
 	box-shadow:
-		0 12px 40px rgba(0, 0, 0, 0.7),
-		inset 0 2px 6px rgba(255, 255, 255, 0.15),
-		inset 0 -2px 6px rgba(0, 0, 0, 0.9);
+		0 6px 28px rgba(0, 0, 0, 0.6),
+		inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.vinyl-groove {
+/* 唱片反光效果 */
+.vinyl-disc::after {
+	content: '';
 	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
 	border-radius: 50%;
-	border: 0.5px solid rgba(255, 255, 255, 0.08);
-	box-shadow:
-		inset 0 1px 3px rgba(0, 0, 0, 0.9),
-		0 0 1px rgba(255, 255, 255, 0.05);
-	background: transparent;
-}
-
-.vinyl-groove-1 {
-	top: 5%;
-	left: 5%;
-	width: 90%;
-	height: 90%;
-}
-
-.vinyl-groove-2 {
-	top: 15%;
-	left: 15%;
-	width: 70%;
-	height: 70%;
-}
-
-.vinyl-groove-3 {
-	top: 25%;
-	left: 25%;
-	width: 50%;
-	height: 50%;
+	background: linear-gradient(
+		135deg,
+		rgba(255, 255, 255, 0.06) 0%,
+		transparent 40%,
+		transparent 60%,
+		rgba(255, 255, 255, 0.03) 100%
+	);
+	pointer-events: none;
+	z-index: 1;
 }
 
 .vinyl-cover-container {
@@ -108,12 +94,10 @@
 	overflow: hidden;
 	z-index: 3;
 	box-shadow:
-		0 8px 24px rgba(0, 0, 0, 0.8),
-		inset 0 1px 2px rgba(255, 255, 255, 0.2),
-		inset 0 -1px 2px rgba(0, 0, 0, 0.8),
-		0 0 0 1px var(--interactive-accent);
-	border: 3px solid #0a0a0a;
-	background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+		0 0 0 2px var(--interactive-accent),
+		0 4px 16px rgba(0, 0, 0, 0.6);
+	border: 2px solid #0a0a0a;
+	background: #111;
 }
 
 .vinyl-cover {
@@ -138,70 +122,31 @@
 	background: #1a1a1a;
 }
 
-.vinyl-shine {
+/* ========== 唱片针样式 ========== */
+
+.vinyl-tonearm {
 	position: absolute;
-	top: 10%;
-	left: 15%;
-	width: 35%;
-	height: 35%;
-	border-radius: 50%;
-	background:
-		radial-gradient(circle at 40% 40%,
-			rgba(255, 255, 255, 0.4) 0%,
-			rgba(255, 255, 255, 0.2) 20%,
-			rgba(255, 255, 255, 0.1) 40%,
-			transparent 70%);
-	z-index: 2;
+	top: -50px;
+	left: 50%;
+	z-index: 15;
 	pointer-events: none;
-	mix-blend-mode: overlay;
+	transform-origin: 9px 5px;
+	transform: translateX(-9px) rotate(-30deg);
+	transition: transform 0.3s ease;
 }
 
-.vinyl-shine::before {
-	content: '';
-	position: absolute;
-	top: 20%;
-	left: 25%;
-	width: 20%;
-	height: 20%;
-	border-radius: 50%;
-	background: radial-gradient(circle,
-		rgba(255, 255, 255, 0.3) 0%,
-		transparent 60%);
+.vinyl-tonearm.playing {
+	transform: translateX(-9px) rotate(0deg);
 }
 
-.vinyl-disc::before {
-	content: '';
-	position: absolute;
-	top: -2px;
-	left: -2px;
-	right: -2px;
-	bottom: -2px;
-	border-radius: 50%;
-	background: linear-gradient(45deg,
-		transparent 30%,
-		rgba(255, 255, 255, 0.1) 50%,
-		transparent 70%);
-	z-index: 1;
+.needle-image {
+	display: block;
+	width: 50px;
+	height: 83px;
+	filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+	user-select: none;
 	pointer-events: none;
-}
-
-/* ========== 唱片纹路动画 ========== */
-
-.vinyl-groove {
-	transition: border-color 0.3s ease;
-}
-
-.vinyl-disc:hover .vinyl-groove {
-	border-color: rgba(255, 255, 255, 0.15);
-}
-
-.vinyl-shine {
-	opacity: 0.6;
-	transition: opacity 0.3s ease;
-}
-
-.vinyl-disc:hover .vinyl-shine {
-	opacity: 0.8;
+	object-fit: contain;
 }
 
 /* ========== 响应式设计 ========== */
@@ -228,5 +173,14 @@
 	.vinyl-cover-container {
 		width: 70px;
 		height: 70px;
+	}
+
+	.vinyl-tonearm {
+		top: -31px;
+	}
+
+	.needle-image {
+		width: 39px;
+		height: 65px;
 	}
 }

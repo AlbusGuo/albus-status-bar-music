@@ -854,6 +854,9 @@ export class MusicHubComponent {
 		this.leftVinylButton.style.pointerEvents = "none";
 		this.rightVinylButton.style.pointerEvents = "none";
 
+		// 动画开始时抬起唱片针
+		this.vinylPlayer.liftTonearm();
+
 		if (direction === "next") {
 			// ===== 切下一首：所有唱片向左连续滑动 =====
 
@@ -872,7 +875,7 @@ export class MusicHubComponent {
 			// 右侧唱片：滑向中间位置并放大
 			const a3 = this.rightVinylButton.animate([
 				{ transform: `scale(${SIDE_SCALE}) translateX(${SIDE_TX}px)`, opacity: 0.7 },
-				{ transform: `scale(${CENTER_W / SIDE_W}) translateX(${(-stepC2R + SIDE_TX) / (CENTER_W / SIDE_W)}px)`, opacity: 1 },
+				{ transform: `scale(${CENTER_W / SIDE_W}) translateX(${(-stepC2R + SIDE_SCALE * SIDE_TX) / (CENTER_W / SIDE_W)}px)`, opacity: 1 },
 			], { duration: DURATION, easing: EASING, fill: "forwards" });
 
 			this.carouselAnimations = [a1, a2, a3];
@@ -892,6 +895,9 @@ export class MusicHubComponent {
 				}
 				this.updateSideVinyl(this.leftVinylButton, prevTrack);
 				this.updateSideVinyl(this.rightVinylButton, nextTrack);
+
+				// 动画结束时放下唱片针
+				this.vinylPlayer.lowerTonearm();
 
 				// 新右侧唱片从右侧滑入（唯一需要入场动画的元素）
 				const enterAnim = this.rightVinylButton.animate([
@@ -923,7 +929,7 @@ export class MusicHubComponent {
 			// 左侧唱片：滑向中间位置并放大
 			const a3 = this.leftVinylButton.animate([
 				{ transform: `scale(${SIDE_SCALE}) translateX(${-SIDE_TX}px)`, opacity: 0.7 },
-				{ transform: `scale(${CENTER_W / SIDE_W}) translateX(${(stepL2C - SIDE_TX) / (CENTER_W / SIDE_W)}px)`, opacity: 1 },
+				{ transform: `scale(${CENTER_W / SIDE_W}) translateX(${(stepL2C - SIDE_SCALE * SIDE_TX) / (CENTER_W / SIDE_W)}px)`, opacity: 1 },
 			], { duration: DURATION, easing: EASING, fill: "forwards" });
 
 			this.carouselAnimations = [a1, a2, a3];
@@ -941,6 +947,9 @@ export class MusicHubComponent {
 				}
 				this.updateSideVinyl(this.leftVinylButton, prevTrack);
 				this.updateSideVinyl(this.rightVinylButton, nextTrack);
+
+				// 动画结束时放下唱片针
+				this.vinylPlayer.lowerTonearm();
 
 				// 新左侧唱片从左侧滑入
 				const enterAnim = this.leftVinylButton.animate([
@@ -1022,12 +1031,6 @@ export class MusicHubComponent {
 	 */
 	private createSideVinylStructure(button: HTMLButtonElement): void {
 		const disc = button.createEl("div", { cls: "hub-side-vinyl-disc" });
-		// 音轨纹路
-		for (let i = 0; i < 3; i++) {
-			disc.createEl("div", { cls: `hub-side-groove hub-side-groove-${i + 1}` });
-		}
-		// 高光效果
-		disc.createEl("div", { cls: "hub-side-shine" });
 		// 封面容器
 		const coverContainer = disc.createEl("div", { cls: "hub-side-cover-container" });
 		coverContainer.createEl("div", { cls: "hub-side-vinyl-cover" });

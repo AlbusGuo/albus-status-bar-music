@@ -22,6 +22,7 @@ export interface PluginSettings {
 	showControlButtons: boolean;
 	closeHubOnClickOutside: boolean;
 	volume: number;
+	enableCustomLyricsColor: boolean;
 	lyricsHighlightColorDark: string;
 	lyricsHighlightColorLight: string;
 	showLoadNotice: boolean;

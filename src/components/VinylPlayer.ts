@@ -1,4 +1,5 @@
 import { MusicTrack } from "../types";
+import { NEEDLE_IMAGE } from "../assets/needle";
 
 /**
  * 黑胶唱片播放器组件
@@ -8,6 +9,7 @@ export class VinylPlayer {
 	private containerEl: HTMLElement;
 	private vinylDisc: HTMLElement;
 	private coverImage: HTMLElement;
+	private tonearmEl: HTMLElement;
 	private isPlaying: boolean = false;
 	private rotationAngle: number = 0;
 	private animationFrame: number | null = null;
@@ -29,6 +31,16 @@ export class VinylPlayer {
 		// 主容器
 		this.containerEl.addClass("vinyl-player");
 
+		// 唱片针（位于唱片上方，不随唱片旋转）
+		this.tonearmEl = this.containerEl.createEl("div", {
+			cls: "vinyl-tonearm",
+		});
+		const needleImg = this.tonearmEl.createEl("img", {
+			cls: "needle-image",
+		});
+		needleImg.src = NEEDLE_IMAGE;
+		needleImg.draggable = false;
+
 		// 黑胶唱片容器（可点击）
 		this.vinylDisc = this.containerEl.createEl("div", {
 			cls: "vinyl-disc"
@@ -40,9 +52,6 @@ export class VinylPlayer {
 		});
 		this.vinylDisc.style.cursor = "pointer";
 
-		// 唱片纹理
-		this.createVinylTexture();
-
 		// 封面容器（占据整个中心区域）
 		const coverContainer = this.vinylDisc.createEl("div", {
 			cls: "vinyl-cover-container",
@@ -51,23 +60,6 @@ export class VinylPlayer {
 		// 封面图片
 		this.coverImage = coverContainer.createEl("div", {
 			cls: "vinyl-cover",
-		});
-	}
-
-	/**
-	 * 创建唱片纹理效果
-	 */
-	private createVinylTexture(): void {
-		// 创建音轨纹路效果
-		for (let i = 0; i < 3; i++) {
-			const groove = this.vinylDisc.createEl("div", {
-				cls: `vinyl-groove vinyl-groove-${i + 1}`
-			});
-		}
-
-		// 创建高光效果
-		const shine = this.vinylDisc.createEl("div", {
-			cls: "vinyl-shine"
 		});
 	}
 
@@ -117,8 +109,26 @@ export class VinylPlayer {
 
 		if (isPlaying) {
 			this.startRotation();
+			this.tonearmEl.addClass("playing");
 		} else {
 			this.stopRotation();
+			this.tonearmEl.removeClass("playing");
+		}
+	}
+
+	/**
+	 * 抬起唱片针（切歌动画时调用）
+	 */
+	liftTonearm(): void {
+		this.tonearmEl.removeClass("playing");
+	}
+
+	/**
+	 * 放下唱片针（切歌动画结束时调用）
+	 */
+	lowerTonearm(): void {
+		if (this.isPlaying) {
+			this.tonearmEl.addClass("playing");
 		}
 	}
 
