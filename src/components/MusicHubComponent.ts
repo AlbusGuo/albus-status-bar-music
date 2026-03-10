@@ -1,4 +1,4 @@
-import { setIcon } from "obsidian";
+import { Menu, setIcon } from "obsidian";
 import { MusicTrack, PlaybackMode } from "../types";
 import { CSS_CLASSES, ICONS } from "../utils/constants";
 import { clamp, formatTime } from "../utils/helpers";
@@ -264,15 +264,7 @@ export class MusicHubComponent {
 
 		// 播放列表切换按钮事件
 		this.playlistToggleButton.addEventListener("click", (e) => {
-			e.stopPropagation(); // 防止事件冒泡
-			const existingSelector = this.containerEl.querySelector(
-				".playlist-selector-container"
-			);
-			if (existingSelector) {
-				this.hidePlaylistSelector();
-			} else {
-				this.showPlaylistSelector();
-			}
+			this.showPlaylistSelector(e);
 		});
 
 		this.modeButton.addEventListener("click", (e) => {
@@ -431,6 +423,22 @@ export class MusicHubComponent {
 		this.floatingHighlightColorLight = lightColor;
 		if (this.floatingLyricsComponent) {
 			this.floatingLyricsComponent.setColors(darkColor, lightColor);
+		}
+	}
+
+	/**
+	 * 设置唱片强调色（与歌词高亮颜色绑定）
+	 */
+	setVinylAccentColor(darkColor: string, lightColor: string): void {
+		if (darkColor) {
+			document.body.style.setProperty("--vinyl-accent-color-dark", darkColor);
+		} else {
+			document.body.style.removeProperty("--vinyl-accent-color-dark");
+		}
+		if (lightColor) {
+			document.body.style.setProperty("--vinyl-accent-color-light", lightColor);
+		} else {
+			document.body.style.removeProperty("--vinyl-accent-color-light");
 		}
 	}
 
@@ -620,7 +628,8 @@ export class MusicHubComponent {
 				const target = e.target as HTMLElement;
 				// 检查点击是否在音乐中心外部
 				if (!this.containerEl.contains(target) && 
-					!target.closest('.albus-status-bar-music-statusbar')) {
+					!target.closest('.albus-status-bar-music-statusbar') &&
+					!target.closest('.menu')) {
 					this.hide();
 				}
 			};
@@ -1317,114 +1326,33 @@ export class MusicHubComponent {
 	}
 
 	/**
-	 * 显示歌单选择器
+	 * 显示歌单选择器（使用 Obsidian 默认菜单）
 	 */
-	private showPlaylistSelector(): void {
-		// 获取当前歌单列表
+	private showPlaylistSelector(e: MouseEvent): void {
+		e.preventDefault();
+		e.stopPropagation();
+
 		const categories = this.events.onGetCategories?.() || [];
-
-		// 如果选择器已存在，先移除
-		this.hidePlaylistSelector();
-
-		// 创建选择器容器
-		const selectorContainer = this.containerEl.createEl("div", {
-			cls: "playlist-selector-container",
-		});
-
-		// 阻止选择器内部的点击事件冒泡
-		selectorContainer.addEventListener("click", (e) => {
-			e.stopPropagation();
-		});
-
-		// 创建选择器标题
-		const title = selectorContainer.createEl("div", {
-			cls: "playlist-selector-title",
-			text: "选择歌单",
-		});
-
-		// 创建歌单列表
-		const playlistList = selectorContainer.createEl("div", {
-			cls: "playlist-selector-list",
-		});
-
-		// 获取当前选中的歌单
 		const currentCategory = this.events.onGetCurrentCategory?.() || "all";
 
-		// 添加歌单选项
+		const menu = new Menu();
+
 		categories.forEach((category: { value: string; label: string }) => {
-			const item = playlistList.createEl("div", {
-				cls: `playlist-selector-item ${
-					category.value === currentCategory ? "is-active" : ""
-				}`,
-				text: category.label,
-			});
-
-			item.addEventListener("click", () => {
-				this.events.onCategoryChange?.(category.value as any);
-				this.hidePlaylistSelector();
-			});
-
-			item.addEventListener("mouseenter", () => {
-				item.addClass("is-hovered");
-			});
-
-			item.addEventListener("mouseleave", () => {
-				item.removeClass("is-hovered");
+			menu.addItem((item) => {
+				item.setTitle(category.label);
+				if (category.value === currentCategory) {
+					item.setIcon("check");
+				}
+				item.onClick(() => {
+					this.events.onCategoryChange?.(category.value as any);
+				});
 			});
 		});
 
-		// 点击外部关闭选择器
-		const closeHandler = (e: MouseEvent) => {
-			// 检查点击是否在选择器外部且不在按钮上
-			if (
-				!selectorContainer.contains(e.target as Node) &&
-				!this.playlistToggleButton.contains(e.target as Node)
-			) {
-				this.hidePlaylistSelector();
-				document.removeEventListener("click", closeHandler);
-			}
-		};
+		const rect = this.playlistToggleButton.getBoundingClientRect();
+		menu.showAtPosition({ x: rect.left, y: rect.bottom });
 
-		// 延迟添加点击事件，避免立即触发
-		setTimeout(() => {
-			document.addEventListener("click", closeHandler);
-		}, 100);
-
-		// 定位选择器
-		const buttonRect = this.playlistToggleButton.getBoundingClientRect();
-		const containerRect = this.containerEl.getBoundingClientRect();
-
-		// 计算位置，确保选择器不超出容器边界
-		let leftPos = buttonRect.left - containerRect.left - 50; // 稍微左移以居中
-		const selectorWidth = 180; // 预估选择器宽度
-		const containerWidth = containerRect.width;
-
-		// 确保选择器不超出左边界
-		if (leftPos < 10) {
-			leftPos = 10;
-		}
-		// 确保选择器不超出右边界
-		if (leftPos + selectorWidth > containerWidth - 10) {
-			leftPos = containerWidth - selectorWidth - 10;
-		}
-
-		selectorContainer.style.position = "absolute";
-		selectorContainer.style.bottom = `${
-			containerRect.bottom - buttonRect.top + 8
-		}px`;
-		selectorContainer.style.left = `${leftPos}px`;
-		selectorContainer.style.zIndex = "1000";
-	}
-
-	/**
-	 * 隐藏歌单选择器
-	 */
-	private hidePlaylistSelector(): void {
-		const selector = this.containerEl.querySelector(
-			".playlist-selector-container"
-		);
-		if (selector) {
-			selector.remove();
-		}
+		// 确保菜单显示在 Hub 之上
+		(menu as any).dom?.style?.setProperty("z-index", "10000", "important");
 	}
 }

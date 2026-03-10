@@ -32,7 +32,7 @@ export type PlaybackMode = "loop" | "single" | "shuffle";
 
 export type CategoryType = "all" | "favorite" | string;
 
-export type LyricsDisplayState = "off" | "statusbar" | "floating";
+export type LyricsDisplayState = "off" | "floating";
 
 export interface AudioPlayerEvents {
 	onPlay: () => void;

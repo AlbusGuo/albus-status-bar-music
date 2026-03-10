@@ -1,5 +1,14 @@
 /* Status Bar Music Plugin - Music Hub Styles */
 
+/* 唱片强调色：根据主题自动选择对应颜色 */
+.theme-dark {
+	--vinyl-accent-color: var(--vinyl-accent-color-dark, var(--interactive-accent));
+}
+
+.theme-light {
+	--vinyl-accent-color: var(--vinyl-accent-color-light, var(--interactive-accent));
+}
+
 .albus-status-bar-music-hub-container {
 	position: absolute;
 	z-index: 999;
@@ -198,7 +207,7 @@
 /* 选择器选中选项样式 */
 .albus-status-bar-music-hub-container.has-background .hub-function-select option:checked,
 .albus-status-bar-music-hub-container.has-background.no-cover .hub-function-select option:checked {
-	background-color: var(--interactive-accent);
+	background-color: var(--vinyl-accent-color, var(--interactive-accent));
 	color: white;
 	font-weight: 500;
 }
@@ -314,7 +323,7 @@
 }
 
 .hub-search-input:focus {
-	border-color: var(--interactive-accent);
+	border-color: var(--vinyl-accent-color, var(--interactive-accent));
 }
 
 .hub-search-input::placeholder {
@@ -364,7 +373,7 @@
 	transform: translateY(-50%);
 	height: 4px;
 	width: 100%;
-	background: var(--background-modifier-border);
+	background: #b3b3b3;
 	border-radius: 2px;
 }
 
@@ -372,7 +381,7 @@
 	position: relative;
 	z-index: 1;
 	height: 4px;
-	background-color: var(--interactive-accent);
+	background-color: var(--vinyl-accent-color, var(--interactive-accent));
 	border-radius: 2px;
 }
 
@@ -384,7 +393,7 @@
 	width: 12px;
 	height: 12px;
 	background-color: white;
-	border: 2px solid var(--interactive-accent);
+	border: 2px solid var(--vinyl-accent-color, var(--interactive-accent));
 	border-radius: 50%;
 	pointer-events: none;
 	opacity: 1;
@@ -419,7 +428,7 @@
 	align-items: center;
 	justify-content: center;
 	transition: transform 0.1s ease;
-	color: var(--text-on-accent) !important;
+	color: #b3b3b3 !important;
 	box-shadow: none !important;
 }
 
@@ -441,7 +450,7 @@
 .hub-playlist-toggle .svg-icon {
 	width: 18px;
 	height: 18px;
-	color: var(--text-on-accent) !important;
+	color: inherit !important;
 }
 
 /* 爱心按钮特殊样式 */
@@ -451,7 +460,7 @@
 }
 
 .hub-favorite-button:not(.is-favorite) .svg-icon {
-	color: var(--text-on-accent) !important;
+	color: #b3b3b3 !important;
 	fill: none !important;
 }
 
@@ -478,7 +487,7 @@
 	align-items: center;
 	justify-content: center;
 	transition: transform 0.1s ease;
-	color: var(--text-on-accent) !important;
+	color: #b3b3b3 !important;
 }
 
 .hub-volume-button:hover {
@@ -521,10 +530,10 @@
 	height: 6px;
 	background: linear-gradient(
 		to right,
-		var(--interactive-accent) 0%,
-		var(--interactive-accent) var(--volume-fill, 100%),
-		var(--background-modifier-border) var(--volume-fill, 100%),
-		var(--background-modifier-border) 100%
+		var(--vinyl-accent-color, var(--interactive-accent)) 0%,
+		var(--vinyl-accent-color, var(--interactive-accent)) var(--volume-fill, 100%),
+		#b3b3b3 var(--volume-fill, 100%),
+		#b3b3b3 100%
 	);
 	border-radius: 3px;
 	outline: none;
@@ -544,7 +553,7 @@
 	width: 14px;
 	height: 14px;
 	border-radius: 50%;
-	background: var(--interactive-accent);
+	background: var(--vinyl-accent-color, var(--interactive-accent));
 	cursor: pointer;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 	transition: transform 0.1s ease;
@@ -557,14 +566,14 @@
 .hub-volume-slider::-moz-range-track {
 	width: 100%;
 	height: 6px;
-	background: var(--background-modifier-border);
+	background: #b3b3b3;
 	border-radius: 3px;
 	border: none;
 }
 
 .hub-volume-slider::-moz-range-progress {
 	height: 6px;
-	background: var(--interactive-accent);
+	background: var(--vinyl-accent-color, var(--interactive-accent));
 	border-radius: 3px;
 }
 
@@ -572,7 +581,7 @@
 	width: 14px;
 	height: 14px;
 	border-radius: 50%;
-	background: var(--interactive-accent);
+	background: var(--vinyl-accent-color, var(--interactive-accent));
 	cursor: pointer;
 	border: none;
 	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
@@ -637,21 +646,41 @@
 		inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
+/* 侧边唱片上下高光 */
+.hub-side-vinyl-disc::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	border-radius: 50%;
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 0.1) 0%,
+		transparent 25%,
+		transparent 75%,
+		rgba(255, 255, 255, 0.06) 100%
+	);
+	pointer-events: none;
+	z-index: 2;
+}
+
 /* 侧边唱片封面容器 */
 .hub-side-cover-container {
 	position: absolute;
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	width: 51px;
-	height: 51px;
+	width: 64.2857%;
+	height: 64.2857%;
 	border-radius: 50%;
 	overflow: hidden;
 	z-index: 3;
 	box-shadow:
-		0 0 0 1px var(--interactive-accent),
+		0 0 0 1px var(--vinyl-accent-color, var(--interactive-accent)),
 		0 2px 8px rgba(0, 0, 0, 0.4);
-	border: 2px solid #0a0a0a;
+	border: none;
 	background: #111;
 }
 
@@ -697,63 +726,3 @@
 }
 
 /* ============ 唱片轮播动画由 Web Animations API 驱动（MusicHubComponent.ts） ============ */
-
-
-/* 黑胶唱片容器 - 确保与侧边唱片协调 */
-.hub-vinyl-container {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-}
-
-/* 歌单选择器样式 */
-.playlist-selector-container {
-	position: absolute;
-	background-color: var(--background-primary);
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 6px;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-	min-width: 150px;
-	max-height: 300px;
-	overflow-y: auto;
-	z-index: 1000;
-}
-
-.playlist-selector-title {
-	padding: 8px 12px;
-	font-weight: 600;
-	font-size: 12px;
-	color: var(--text-muted);
-	border-bottom: 1px solid var(--background-modifier-border);
-	background-color: var(--background-secondary);
-}
-
-.playlist-selector-list {
-	padding: 4px 0;
-}
-
-.playlist-selector-item {
-	padding: 8px 12px;
-	cursor: pointer;
-	font-size: 13px;
-	color: var(--text-normal);
-	transition: background-color 0.15s ease, color 0.15s ease;
-	border-radius: 4px;
-	margin: 2px 4px;
-}
-
-.playlist-selector-item:hover,
-.playlist-selector-item.is-hovered {
-	background-color: var(--background-modifier-hover);
-	color: var(--text-normal);
-}
-
-.playlist-selector-item.is-active {
-	background-color: var(--interactive-accent);
-	color: var(--text-on-accent);
-	font-weight: 500;
-}
-
-.playlist-selector-item.is-active:hover {
-	background-color: var(--interactive-accent-hover);
-}

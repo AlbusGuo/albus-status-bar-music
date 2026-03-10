@@ -76,6 +76,7 @@ export class VinylPlayer {
 		this.rotationAngle = 0;
 		this.lastTimestamp = 0;
 		this.vinylDisc.style.transform = 'rotate(0deg)';
+		this.vinylDisc.style.setProperty('--vinyl-counter-rotation', '0deg');
 		if (wasPlaying) {
 			this.startRotation();
 		}
@@ -159,6 +160,7 @@ export class VinylPlayer {
 
 			// 应用旋转
 			this.vinylDisc.style.transform = `rotate(${this.rotationAngle}deg)`;
+			this.vinylDisc.style.setProperty('--vinyl-counter-rotation', `${-this.rotationAngle}deg`);
 
 			if (this.isPlaying) {
 				this.animationFrame = requestAnimationFrame(animate);

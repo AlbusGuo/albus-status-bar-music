@@ -12,8 +12,6 @@ export class StatusBarComponent {
 	private trackNameEl: HTMLSpanElement;
 	private progressEl: HTMLDivElement;
 	private currentTrack: MusicTrack | null = null;
-	private isLyricsMode: boolean = false;
-	private currentLyricsText: string = "";
 
 	private events: {
 		onPrevious?: () => void;
@@ -56,7 +54,6 @@ export class StatusBarComponent {
 		// 歌词按钮
 		this.lyricsButton = this.containerEl.createEl("button", {
 			cls: CSS_CLASSES.BUTTON + " statusbar-lyrics-button",
-			attr: { title: "显示/隐藏歌词" },
 		});
 		setIcon(this.lyricsButton, ICONS.TEXT);
 
@@ -128,40 +125,14 @@ export class StatusBarComponent {
 	 * 更新显示文本（根据模式显示歌曲名或歌词）
 	 */
 	private updateDisplayText(): void {
-		if (this.isLyricsMode && this.currentLyricsText) {
-			// 歌词模式显示当前歌词
-			this.trackNameEl.setText(this.currentLyricsText);
-			this.trackNameEl.addClass("lyrics-mode");
-		} else if (this.currentTrack) {
-			// 正常模式显示歌曲名
+		if (this.currentTrack) {
 			const displayName =
 				this.currentTrack.metadata?.title || this.currentTrack.name;
 			this.trackNameEl.setText(displayName);
-			this.trackNameEl.removeClass("lyrics-mode");
 		} else {
-			// 无曲目时显示默认文本
 			this.trackNameEl.setText("播放列表");
-			this.trackNameEl.removeClass("lyrics-mode");
 		}
 		this.checkAndApplyScrolling();
-	}
-
-	/**
-	 * 设置歌词显示模式
-	 */
-	setLyricsMode(enabled: boolean): void {
-		this.isLyricsMode = enabled;
-		this.updateDisplayText();
-	}
-
-	/**
-	 * 更新当前歌词文本
-	 */
-	updateLyricsText(lyricsText: string): void {
-		this.currentLyricsText = lyricsText || "";
-		if (this.isLyricsMode) {
-			this.updateDisplayText();
-		}
 	}
 
 	/**
@@ -186,15 +157,8 @@ export class StatusBarComponent {
 					"--button-width",
 					`${buttonWidth}px`
 				);
-				// 为歌词模式添加更慢的滚动速度
-				if (this.isLyricsMode) {
-					this.trackNameEl.addClass("lyrics-scrolling");
-				} else {
-					this.trackNameEl.removeClass("lyrics-scrolling");
-				}
 			} else {
 				this.trackNameEl.removeClass(CSS_CLASSES.IS_SCROLLING);
-				this.trackNameEl.removeClass("lyrics-scrolling");
 			}
 		});
 	}
@@ -257,19 +221,12 @@ export class StatusBarComponent {
 	}
 
 	/**
-	 * 设置歌词按钮激活状态（三段式）
+	 * 设置歌词按钮激活状态
 	 */
 	setLyricsButtonState(state: LyricsDisplayState): void {
 		this.lyricsButton.removeClass("active", "active-floating");
-		switch (state) {
-			case "statusbar":
-				this.lyricsButton.addClass("active");
-				break;
-			case "floating":
-				this.lyricsButton.addClass("active-floating");
-				break;
-			case "off":
-				break;
+		if (state === "floating") {
+			this.lyricsButton.addClass("active");
 		}
 	}
 

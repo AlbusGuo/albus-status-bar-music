@@ -24,7 +24,7 @@
 	color: var(--text-accent);
 	font-weight: 600;
 	background-color: var(--background-modifier-hover);
-	border-left: 6px solid var(--interactive-accent);
+	border-left: 6px solid var(--vinyl-accent-color, var(--interactive-accent));
 }
 
 .playlist-item-content {

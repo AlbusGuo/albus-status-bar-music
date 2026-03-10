@@ -322,26 +322,13 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 		// 歌词服务事件 - 当前歌词行变化时更新状态栏
 		this.lyricsService.on("onCurrentLineChange", (lineIndex: number) => {
-			// 更新状态栏歌词
-			if (this.lyricsDisplayState === "statusbar" && this.statusBar) {
-				const currentLyricsText =
-					this.lyricsService.getCurrentLineText();
-				this.statusBar.updateLyricsText(currentLyricsText);
-			}
-
 			// 更新悬浮歌词
 			this.musicHub.updateCurrentLyricsLine(lineIndex);
 		});
 
 		// 歌词服务事件 - 歌词加载完成
-		this.lyricsService.on("onLyricsLoaded", (lyrics) => {
-			if (this.lyricsDisplayState === "statusbar" && this.statusBar) {
-				const initialText =
-					lyrics && lyrics.lines.length > 0
-						? lyrics.lines[0].text
-						: "";
-				this.statusBar.updateLyricsText(initialText);
-			}
+		this.lyricsService.on("onLyricsLoaded", () => {
+			// 歌词加载完成
 		});
 
 		// 播放列表管理器事件
@@ -512,44 +499,19 @@ export default class StatusBarMusicPlugin extends Plugin {
 	}
 
 	/**
-	 * 三段式切换歌词显示状态
+	 * 切换歌词显示状态
 	 */
 	private cycleLyricsState(): void {
-		switch (this.lyricsDisplayState) {
-			case "off":
-				// 打开状态栏歌词
-				this.lyricsDisplayState = "statusbar";
-				this.statusBar?.setLyricsMode(true);
-				this.statusBar?.setLyricsButtonState("statusbar");
-				this.musicHub.hideFloatingLyrics();
-				{
-					let text = this.lyricsService.getCurrentLineText();
-					// 如果当前行为空但歌词存在，显示第一句
-					if (!text) {
-						const lyrics = this.lyricsService.getCurrentLyrics();
-						if (lyrics && lyrics.lines.length > 0) {
-							text = lyrics.lines[0].text;
-						}
-					}
-					this.statusBar?.updateLyricsText(text);
-				}
-				break;
-
-			case "statusbar":
-				// 打开悬浮歌词
-				this.lyricsDisplayState = "floating";
-				this.statusBar?.setLyricsMode(false);
-				this.statusBar?.setLyricsButtonState("floating");
-				this.musicHub.showFloatingLyrics();
-				break;
-
-			case "floating":
-				// 关闭所有歌词
-				this.lyricsDisplayState = "off";
-				this.statusBar?.setLyricsMode(false);
-				this.statusBar?.setLyricsButtonState("off");
-				this.musicHub.hideFloatingLyrics();
-				break;
+		if (this.lyricsDisplayState === "off") {
+			// 打开悬浮歌词
+			this.lyricsDisplayState = "floating";
+			this.statusBar?.setLyricsButtonState("floating");
+			this.musicHub.showFloatingLyrics();
+		} else {
+			// 关闭歌词
+			this.lyricsDisplayState = "off";
+			this.statusBar?.setLyricsButtonState("off");
+			this.musicHub.hideFloatingLyrics();
 		}
 	}
 
@@ -772,9 +734,14 @@ export default class StatusBarMusicPlugin extends Plugin {
 					this.settings.lyricsHighlightColorDark,
 					this.settings.lyricsHighlightColorLight
 				);
+				this.musicHub.setVinylAccentColor(
+					this.settings.lyricsHighlightColorDark,
+					this.settings.lyricsHighlightColorLight
+				);
 			} else {
 				// 禁用自定义颜色，移除 CSS 变量让默认的 var(--interactive-accent) 生效
 				this.musicHub.setFloatingLyricsColors("", "");
+				this.musicHub.setVinylAccentColor("", "");
 			}
 		}
 	}

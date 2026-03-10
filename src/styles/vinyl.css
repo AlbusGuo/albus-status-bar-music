@@ -57,6 +57,24 @@
 	transition: box-shadow 0.3s ease;
 }
 
+/* 唱片上下高光（通过 counter-rotate 固定方向，不随唱片旋转） */
+.vinyl-disc::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	border-radius: 50%;
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 0.1) 0%,
+		transparent 25%,
+		transparent 75%,
+		rgba(255, 255, 255, 0.06) 100%
+	);
+	pointer-events: none;
+	z-index: 4;
+	transform: rotate(var(--vinyl-counter-rotation, 0deg));
+}
+
 .vinyl-disc:hover {
 	box-shadow:
 		0 6px 28px rgba(0, 0, 0, 0.6),
@@ -88,15 +106,15 @@
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	width: 90px;
-	height: 90px;
+	width: 64.2857%;
+	height: 64.2857%;
 	border-radius: 50%;
 	overflow: hidden;
 	z-index: 3;
 	box-shadow:
-		0 0 0 2px var(--interactive-accent),
+		0 0 0 2px var(--vinyl-accent-color, var(--interactive-accent)),
 		0 4px 16px rgba(0, 0, 0, 0.6);
-	border: 2px solid #0a0a0a;
+	border: none;
 	background: #111;
 }
 
@@ -171,8 +189,12 @@
 	}
 
 	.vinyl-cover-container {
-		width: 70px;
-		height: 70px;
+		width: 64.2857%;
+		height: 64.2857%;
+		border: none;
+		box-shadow:
+			0 0 0 2px var(--vinyl-accent-color, var(--interactive-accent)),
+			0 4px 16px rgba(0, 0, 0, 0.6);
 	}
 
 	.vinyl-tonearm {

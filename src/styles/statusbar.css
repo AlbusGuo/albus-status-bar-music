@@ -115,19 +115,10 @@
 }
 
 .statusbar-lyrics-button.active {
-	background: var(--interactive-accent) !important;
+	background: var(--vinyl-accent-color, var(--interactive-accent)) !important;
 }
 
 .statusbar-lyrics-button.active .svg-icon {
-	color: var(--text-on-accent) !important;
-}
-
-.statusbar-lyrics-button.active-floating {
-	background: var(--interactive-accent) !important;
-	opacity: 0.75;
-}
-
-.statusbar-lyrics-button.active-floating .svg-icon {
 	color: var(--text-on-accent) !important;
 }
 
@@ -164,7 +155,7 @@
 	left: 0;
 	height: 100%;
 	width: 0%;
-	background: var(--interactive-accent);
+	background: var(--vinyl-accent-color, var(--interactive-accent));
 	opacity: 0.3;
 	z-index: 1;
 	pointer-events: none;
@@ -182,17 +173,6 @@
 .albus-status-bar-music-track-button span.is-scrolling {
 	display: inline-block;
 	animation: scroll-text-animation 10s linear infinite;
-}
-
-/* 歌词模式样式 */
-.albus-status-bar-music-track-button span.lyrics-mode {
-	color: var(--text-accent);
-	font-style: normal;
-}
-
-/* 歌词滚动 - 比普通文字滚动更慢 */
-.albus-status-bar-music-track-button span.lyrics-scrolling.is-scrolling {
-	animation: scroll-lyrics-animation 15s linear infinite;
 }
 
 @keyframes scroll-text-animation {
@@ -213,20 +193,3 @@
 	}
 }
 
-@keyframes scroll-lyrics-animation {
-	0% {
-		transform: translateX(0);
-	}
-	30% {
-		transform: translateX(calc(-100% + var(--button-width, 150px) - 20px));
-	}
-	70% {
-		transform: translateX(calc(-100% + var(--button-width, 150px) - 20px));
-	}
-	95% {
-		transform: translateX(0);
-	}
-	100% {
-		transform: translateX(0);
-	}
-}

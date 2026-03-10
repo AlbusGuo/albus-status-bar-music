@@ -126,11 +126,11 @@ export class SettingsTab extends PluginSettingTab {
 	 */
 	private displayLyricsGroup(): void {
 		const group = new SettingGroup(this.containerEl)
-			.setHeading("歌词");
+			.setHeading("外观");
 
 		group.addSetting((s) => {
-			s.setName("自定义歌词高亮色")
-				.setDesc("启用后可分别设置浅色/深色模式的歌词高亮颜色，关闭则使用主题强调色。")
+			s.setName("播放器主色调")
+				.setDesc("启用后可分别设置浅色/深色模式的播放器主色调（影响进度条、唱片、歌词高亮等所有强调色），关闭则使用主题强调色。")
 				.addToggle((toggle) => {
 					toggle
 						.setValue(this.settings.enableCustomLyricsColor)
@@ -145,8 +145,8 @@ export class SettingsTab extends PluginSettingTab {
 
 		if (this.settings.enableCustomLyricsColor) {
 			group.addSetting((s) => {
-				s.setName("浅色模式高亮色")
-					.setDesc("浅色主题下当前播放歌词的颜色，留空使用默认值。")
+				s.setName("浅色模式主色调")
+					.setDesc("浅色主题下播放器强调色，留空使用默认值。")
 					.addColorPicker((cp) => {
 						cp.setValue(this.settings.lyricsHighlightColorLight || "#0288d1")
 							.onChange(async (value) => {
@@ -168,8 +168,8 @@ export class SettingsTab extends PluginSettingTab {
 			});
 
 			group.addSetting((s) => {
-				s.setName("深色模式高亮色")
-					.setDesc("深色主题下当前播放歌词的颜色，留空使用默认值。")
+				s.setName("深色模式主色调")
+					.setDesc("深色主题下播放器强调色，留空使用默认值。")
 					.addColorPicker((cp) => {
 						cp.setValue(this.settings.lyricsHighlightColorDark || "#4fc3f7")
 							.onChange(async (value) => {

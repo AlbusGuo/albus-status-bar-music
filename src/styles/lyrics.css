@@ -354,7 +354,7 @@
 }
 
 .music-lyrics-line.current {
-	background: var(--interactive-accent);
+	background: var(--vinyl-accent-color, var(--interactive-accent));
 	color: var(--text-on-accent);
 	font-weight: 600;
 	transform: scale(1.02);
@@ -456,7 +456,7 @@
 }
 
 .theme-dark .music-lyrics-line.current {
-	background: var(--interactive-accent);
+	background: var(--vinyl-accent-color, var(--interactive-accent));
 	color: var(--text-on-accent);
 	box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
 }
@@ -468,7 +468,7 @@
 }
 
 .theme-light .music-lyrics-line.current {
-	background: var(--interactive-accent);
+	background: var(--vinyl-accent-color, var(--interactive-accent));
 	color: var(--text-on-accent);
 	box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.2);
 }
@@ -501,7 +501,7 @@
 }
 
 .music-lyrics-control-btn.active {
-	background: var(--interactive-accent);
+	background: var(--vinyl-accent-color, var(--interactive-accent));
 	color: var(--text-on-accent);
 }
 
@@ -529,7 +529,7 @@
 }
 
 .music-lyrics-font-btn:hover {
-	background: var(--interactive-accent);
+	background: var(--vinyl-accent-color, var(--interactive-accent));
 	color: var(--text-on-accent);
 }
 
@@ -554,7 +554,7 @@
 	width: 20px;
 	height: 20px;
 	border: 2px solid var(--background-modifier-border);
-	border-top: 2px solid var(--interactive-accent);
+	border-top: 2px solid var(--vinyl-accent-color, var(--interactive-accent));
 	border-radius: 50%;
 	animation: spin 1s linear infinite;
 	margin-left: 8px;
