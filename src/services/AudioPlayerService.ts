@@ -63,7 +63,6 @@ export class AudioPlayerService {
 		});
 
 		this.audio.addEventListener("error", (e) => {
-			console.error("Audio player error:", e);
 			this.emit("onError", new Error("Audio playback error"));
 		});
 
@@ -126,7 +125,6 @@ export class AudioPlayerService {
 		try {
 			await this.audio.play();
 		} catch (error) {
-			console.error("Play error:", error);
 			this.emit("onError", error as Error);
 			throw error;
 		}

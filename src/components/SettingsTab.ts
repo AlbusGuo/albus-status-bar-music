@@ -1,17 +1,18 @@
 import { App, PluginSettingTab, Setting, SettingGroup, Notice } from "obsidian";
 import { PluginSettings } from "../types";
 import { ConfirmModal } from "./ConfirmModal";
+import type StatusBarMusicPlugin from "../main";
 
 export class SettingsTab extends PluginSettingTab {
 	private settings: PluginSettings;
 	private saveCallback: () => Promise<void>;
 	private metadataStatsContainer: HTMLElement | null = null;
-	private plugin: any;
+	private plugin: StatusBarMusicPlugin;
 	private updateInterval: NodeJS.Timeout | null = null;
 
 	constructor(
 		app: App,
-		plugin: any,
+		plugin: StatusBarMusicPlugin,
 		settings: PluginSettings,
 		saveCallback: () => Promise<void>
 	) {
@@ -95,7 +96,7 @@ export class SettingsTab extends PluginSettingTab {
 
 		group.addSetting((s) => {
 			s.setName("点击外部关闭播放器")
-				.setDesc("启用后，点击音乐播放器外部区域将自动关闭播放器")
+				.setDesc("启用后, 点击音乐播放器外部区域将自动关闭播放器")
 				.addToggle((toggle) => {
 					toggle
 						.setValue(this.settings.closeHubOnClickOutside)
@@ -130,7 +131,7 @@ export class SettingsTab extends PluginSettingTab {
 
 		group.addSetting((s) => {
 			s.setName("播放器主色调")
-				.setDesc("启用后可分别设置浅色/深色模式的播放器主色调（影响进度条、唱片、歌词高亮等所有强调色），关闭则使用主题强调色。")
+				.setDesc("启用后可分别设置浅色/深色模式的播放器主色调 (影响歌词等所有强调色),关闭则使用主题强调色.")
 				.addToggle((toggle) => {
 					toggle
 						.setValue(this.settings.enableCustomLyricsColor)
@@ -146,7 +147,7 @@ export class SettingsTab extends PluginSettingTab {
 		if (this.settings.enableCustomLyricsColor) {
 			group.addSetting((s) => {
 				s.setName("浅色模式主色调")
-					.setDesc("浅色主题下播放器强调色，留空使用默认值。")
+					.setDesc("浅色主题下播放器强调色")
 					.addColorPicker((cp) => {
 						cp.setValue(this.settings.lyricsHighlightColorLight || "#0288d1")
 							.onChange(async (value) => {
@@ -169,7 +170,7 @@ export class SettingsTab extends PluginSettingTab {
 
 			group.addSetting((s) => {
 				s.setName("深色模式主色调")
-					.setDesc("深色主题下播放器强调色，留空使用默认值。")
+					.setDesc("深色主题下播放器强调色")
 					.addColorPicker((cp) => {
 						cp.setValue(this.settings.lyricsHighlightColorDark || "#4fc3f7")
 							.onChange(async (value) => {
@@ -205,14 +206,10 @@ export class SettingsTab extends PluginSettingTab {
 
 			new Notice("正在扫描音乐文件...", 5000);
 
-			this.plugin.playlistManager.initializeMetadata(this.settings);
-			await this.plugin.playlistManager.loadFullPlaylist();
-			await this.plugin.playlistManager.refreshMetadata();
+			const { trackCount, playlistCount } = await this.plugin.scanMusicLibrary();
 			await this.saveCallback();
 
-			const playlist = this.plugin.playlistManager.getPlaylist();
-			const playlists = this.plugin.playlistManager.getPlaylists();
-			new Notice(`扫描完成！共 ${playlist.length} 首歌曲，${playlists.length} 个歌单`);
+			new Notice(`扫描完成！共 ${trackCount} 首歌曲，${playlistCount} 个歌单`);
 		} catch {
 			new Notice("扫描失败，请检查文件夹路径。");
 		}
@@ -222,15 +219,7 @@ export class SettingsTab extends PluginSettingTab {
 	 * 内联更新元数据统计（在 SettingGroup 内部）
 	 */
 	private updateMetadataStatsInline(setting: Setting): void {
-		let metadataCount = 0;
-		if (this.plugin?.playlistManager) {
-			const metadataManager = this.plugin.playlistManager.metadataManager;
-			if (metadataManager) {
-				metadataCount = metadataManager.getCacheSize();
-			}
-		} else {
-			metadataCount = Object.keys(this.settings.metadata || {}).length;
-		}
+		const metadataCount = this.plugin.getMetadataCacheSize();
 
 		setting.setName("已缓存元数据")
 			.setDesc(`当前已缓存 ${metadataCount} 个音频文件的元数据`)
@@ -295,15 +284,7 @@ export class SettingsTab extends PluginSettingTab {
 	 */
 	private updateMetadataStatsText(): void {
 		if (!this.metadataStatsContainer) return;
-		let metadataCount = 0;
-		if (this.plugin?.playlistManager) {
-			const metadataManager = this.plugin.playlistManager.metadataManager;
-			if (metadataManager) {
-				metadataCount = metadataManager.getCacheSize();
-			}
-		} else {
-			metadataCount = Object.keys(this.settings.metadata || {}).length;
-		}
+		const metadataCount = this.plugin.getMetadataCacheSize();
 		const descEl = this.metadataStatsContainer.querySelector(".setting-item-description");
 		if (descEl) {
 			descEl.textContent = `当前已缓存 ${metadataCount} 个音频文件的元数据`;

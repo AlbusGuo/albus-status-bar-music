@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import { App, TFile, normalizePath } from "obsidian";
 import {
 	CategoryType,
 	MusicTrack,
@@ -7,7 +7,7 @@ import {
 	PluginSettings,
 	TrackMetadata,
 } from "../types";
-import { isSupportedAudioFile, normalizePath } from "../utils/helpers";
+import { isSupportedAudioFile } from "../utils/helpers";
 import { MetadataManager } from "./MetadataManager";
 
 export class PlaylistManager {
@@ -220,7 +220,6 @@ export class PlaylistManager {
 			this.emit("onPlaylistUpdate", this.viewPlaylist);
 			
 		} catch (error) {
-			console.error("Failed to refresh music library:", error);
 			// 即使刷新失败，也要确保UI有响应
 			this.emit("onPlaylistUpdate", this.viewPlaylist);
 		}

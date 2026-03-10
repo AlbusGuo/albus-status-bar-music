@@ -1,6 +1,6 @@
-import { App, TFile } from "obsidian";
+import { App, TFile, normalizePath } from "obsidian";
 import { TrackMetadata, PluginSettings } from "../types";
-import { isSupportedAudioFile, normalizePath } from "../utils/helpers";
+import { isSupportedAudioFile } from "../utils/helpers";
 import { MetadataParser } from "./MetadataParser";
 
 /**

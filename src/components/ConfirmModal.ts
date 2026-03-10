@@ -30,36 +30,30 @@ export class ConfirmModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 
-		contentEl.createEl("h2", { text: this.title });
+		new Setting(contentEl).setName(this.title).setHeading();
 
-		const messageEl = contentEl.createEl("p", {
-			cls: "confirm-modal-message"
-		});
-		messageEl.setText(this.message);
-
-		const buttonContainer = contentEl.createEl("div", {
-			cls: "confirm-modal-buttons"
+		contentEl.createEl("p", {
+			cls: "confirm-modal-message",
+			text: this.message,
 		});
 
-		const cancelButton = buttonContainer.createEl("button", {
-			cls: "mod-cta",
-			text: "Cancel"
-		});
-		cancelButton.onclick = () => {
-			this.close();
-			if (this.onCancel) {
-				this.onCancel();
-			}
-		};
-
-		const confirmButton = buttonContainer.createEl("button", {
-			cls: "mod-warning",
-			text: this.confirmText
-		});
-		confirmButton.onclick = () => {
-			this.close();
-			this.onConfirm();
-		};
+		new Setting(contentEl)
+			.addButton((btn) => {
+				btn.setButtonText("Cancel")
+					.setCta()
+					.onClick(() => {
+						this.close();
+						this.onCancel?.();
+					});
+			})
+			.addButton((btn) => {
+				btn.setButtonText(this.confirmText)
+					.setWarning()
+					.onClick(() => {
+						this.close();
+						this.onConfirm();
+					});
+			});
 	}
 
 	onClose() {

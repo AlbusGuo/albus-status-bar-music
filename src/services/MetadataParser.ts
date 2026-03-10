@@ -192,7 +192,6 @@ export class MetadataParser {
 
 			return null;
 		} catch (error) {
-			console.warn("Failed to extract lyrics from metadata:", error);
 			return null;
 		}
 	}

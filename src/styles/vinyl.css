@@ -34,11 +34,57 @@
 	position: relative;
 }
 
-.vinyl-disc {
+/* 唱片包装器：唯一的圆形裁剪边界，overflow: hidden 消除多层 border-radius 反锯齿白边 */
+.vinyl-disc-wrapper {
 	width: 140px;
 	height: 140px;
 	border-radius: 50%;
 	position: relative;
+	background: #0a0a0a;
+	clip-path: inset(0 round 50%);
+	filter: drop-shadow(0 0 0.5px rgba(0,0,0,0.5)) drop-shadow(0 4px 20px rgba(0,0,0,0.5));
+	transition: filter 0.3s ease;
+}
+
+.vinyl-disc-wrapper:hover {
+	filter: drop-shadow(0 0 0.5px rgba(0,0,0,0.5)) drop-shadow(0 6px 28px rgba(0,0,0,0.6));
+}
+
+/* 唱片上下高光 */
+.vinyl-disc-wrapper::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 0.1) 0%,
+		transparent 25%,
+		transparent 75%,
+		rgba(255, 255, 255, 0.06) 100%
+	);
+	pointer-events: none;
+	z-index: 4;
+}
+
+/* 唱片反光效果 */
+.vinyl-disc-wrapper::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		135deg,
+		rgba(255, 255, 255, 0.06) 0%,
+		transparent 40%,
+		transparent 60%,
+		rgba(255, 255, 255, 0.03) 100%
+	);
+	pointer-events: none;
+	z-index: 1;
+}
+
+.vinyl-disc {
+	position: absolute;
+	inset: 0;
 	transform-origin: center center;
 	cursor: pointer;
 	background:
@@ -50,55 +96,7 @@
 			rgba(255, 255, 255, 0.03) 2.5px
 		),
 		radial-gradient(circle at center, #1a1a1a 0%, #111 60%, #0a0a0a 100%);
-	box-shadow:
-		0 4px 20px rgba(0, 0, 0, 0.5),
-		inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 	overflow: hidden;
-	transition: box-shadow 0.3s ease;
-}
-
-/* 唱片上下高光（通过 counter-rotate 固定方向，不随唱片旋转） */
-.vinyl-disc::before {
-	content: '';
-	position: absolute;
-	inset: 0;
-	border-radius: 50%;
-	background: linear-gradient(
-		180deg,
-		rgba(255, 255, 255, 0.1) 0%,
-		transparent 25%,
-		transparent 75%,
-		rgba(255, 255, 255, 0.06) 100%
-	);
-	pointer-events: none;
-	z-index: 4;
-	transform: rotate(var(--vinyl-counter-rotation, 0deg));
-}
-
-.vinyl-disc:hover {
-	box-shadow:
-		0 6px 28px rgba(0, 0, 0, 0.6),
-		inset 0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-
-/* 唱片反光效果 */
-.vinyl-disc::after {
-	content: '';
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	border-radius: 50%;
-	background: linear-gradient(
-		135deg,
-		rgba(255, 255, 255, 0.06) 0%,
-		transparent 40%,
-		transparent 60%,
-		rgba(255, 255, 255, 0.03) 100%
-	);
-	pointer-events: none;
-	z-index: 1;
 }
 
 .vinyl-cover-container {
@@ -183,7 +181,7 @@
 		max-width: 250px;
 	}
 
-	.vinyl-disc {
+	.vinyl-disc-wrapper {
 		width: 110px;
 		height: 110px;
 	}

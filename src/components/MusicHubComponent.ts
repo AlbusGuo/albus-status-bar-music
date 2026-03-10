@@ -67,7 +67,6 @@ export class MusicHubComponent {
 			this.createElements();
 			this.setupEventListeners();
 		} catch (error) {
-			console.error("MusicHubComponent constructor error:", error);
 			throw error;
 		}
 	}
@@ -575,7 +574,7 @@ export class MusicHubComponent {
 				this.addClickOutsideListener();
 			}
 		} catch (error) {
-			console.error("MusicHub: Error showing hub:", error);
+			// 静默处理显示错误
 		}
 	}
 	/**
@@ -819,7 +818,7 @@ export class MusicHubComponent {
 		}
 
 		const vinylContainer = this.controlsEl.querySelector(".hub-vinyl-container") as HTMLElement;
-		const centerDisc = vinylContainer?.querySelector(".vinyl-disc") as HTMLElement;
+		const centerDisc = vinylContainer?.querySelector(".vinyl-disc-wrapper") as HTMLElement;
 		if (!centerDisc) {
 			this.pendingCenterUpdate = false;
 			this.updateSideVinyl(this.leftVinylButton, prevTrack);
@@ -896,14 +895,23 @@ export class MusicHubComponent {
 				a3.cancel();
 
 				// 同帧更新内容（新中心=旧右侧内容，新左侧=旧中心内容 → 视觉一致）
+				const lastAngle = this.vinylPlayer.getRotationAngle();
+				const incomingAngle = this.getSideDiscAngle(this.rightVinylButton);
 				this.pendingCenterUpdate = false;
 				if (this.pendingTrackData) {
-					this.vinylPlayer.resetRotation();
+					this.vinylPlayer.setRotationAngle(incomingAngle);
 					this.vinylPlayer.setTrack(this.pendingTrackData);
 					this.pendingTrackData = null;
 				}
 				this.updateSideVinyl(this.leftVinylButton, prevTrack);
 				this.updateSideVinyl(this.rightVinylButton, nextTrack);
+
+				// 左侧唱片（旧中心）保留中心的旋转角度
+				const leftDisc = this.leftVinylButton.querySelector(".hub-side-vinyl-disc") as HTMLElement;
+				if (leftDisc) leftDisc.style.transform = `rotate(${lastAngle}deg)`;
+				// 右侧唱片（新进入）角度重置为0
+				const rightDisc = this.rightVinylButton.querySelector(".hub-side-vinyl-disc") as HTMLElement;
+				if (rightDisc) rightDisc.style.transform = '';
 
 				// 动画结束时放下唱片针
 				this.vinylPlayer.lowerTonearm();
@@ -949,13 +957,22 @@ export class MusicHubComponent {
 				a3.cancel();
 
 				this.pendingCenterUpdate = false;
+				const lastAngle = this.vinylPlayer.getRotationAngle();
+				const incomingAngle = this.getSideDiscAngle(this.leftVinylButton);
 				if (this.pendingTrackData) {
-					this.vinylPlayer.resetRotation();
+					this.vinylPlayer.setRotationAngle(incomingAngle);
 					this.vinylPlayer.setTrack(this.pendingTrackData);
 					this.pendingTrackData = null;
 				}
 				this.updateSideVinyl(this.leftVinylButton, prevTrack);
 				this.updateSideVinyl(this.rightVinylButton, nextTrack);
+
+				// 右侧唱片（旧中心）保留中心的旋转角度
+				const rightDisc = this.rightVinylButton.querySelector(".hub-side-vinyl-disc") as HTMLElement;
+				if (rightDisc) rightDisc.style.transform = `rotate(${lastAngle}deg)`;
+				// 左侧唱片（新进入）角度重置为0
+				const leftDisc = this.leftVinylButton.querySelector(".hub-side-vinyl-disc") as HTMLElement;
+				if (leftDisc) leftDisc.style.transform = '';
 
 				// 动画结束时放下唱片针
 				this.vinylPlayer.lowerTonearm();
@@ -972,6 +989,16 @@ export class MusicHubComponent {
 				}, ENTER_DUR + 50);
 			}, DURATION);
 		}
+	}
+
+	/**
+	 * 获取侧边唱片的旋转角度
+	 */
+	private getSideDiscAngle(button: HTMLButtonElement): number {
+		const disc = button.querySelector(".hub-side-vinyl-disc") as HTMLElement;
+		if (!disc) return 0;
+		const match = disc.style.transform.match(/rotate\(([\d.]+)deg\)/);
+		return match ? parseFloat(match[1]) : 0;
 	}
 
 	/**
@@ -1010,7 +1037,7 @@ export class MusicHubComponent {
 		this.rightVinylButton.style.transition = "";
 		this.leftVinylButton.style.pointerEvents = "";
 		this.rightVinylButton.style.pointerEvents = "";
-		const centerDisc = this.controlsEl.querySelector(".vinyl-disc") as HTMLElement;
+		const centerDisc = this.controlsEl.querySelector(".vinyl-disc-wrapper") as HTMLElement;
 		if (centerDisc) centerDisc.style.transition = "";
 	}
 

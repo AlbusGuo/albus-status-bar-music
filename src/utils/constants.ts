@@ -1,9 +1,3 @@
-export const PLAYBACK_MODES: readonly string[] = [
-	"loop",
-	"single",
-	"shuffle",
-] as const;
-
 export const DEFAULT_METADATA = {
 	title: "未知标题",
 	artist: "未知艺术家",
@@ -14,9 +8,6 @@ export const DEFAULT_METADATA = {
 export const CSS_CLASSES = {
 	STATUSBAR: "albus-status-bar-music-statusbar",
 	BUTTON: "albus-status-bar-music-button",
-	VINYL_BUTTON: "albus-status-bar-music-vinyl-button",
-	VINYL_DISC: "albus-status-bar-music-vinyl-disc",
-	VINYL_CENTER: "albus-status-bar-music-vinyl-center",
 	TRACK_BUTTON: "albus-status-bar-music-track-button",
 	PROGRESS: "albus-status-bar-progress",
 	HUB_CONTAINER: "albus-status-bar-music-hub-container",
@@ -34,11 +25,9 @@ export const ICONS = {
 	SKIP_FORWARD: "skip-forward",
 	HEART: "heart",
 	MUSIC: "music",
-	REFRESH: "refresh-cw",
 	REPEAT: "repeat",
 	REPEAT_ONE: "repeat-1",
 	SHUFFLE: "shuffle",
-	TRASH: "trash",
 	LIST: "list",
 	TEXT: "type", // 歌词图标
 	VOLUME: "volume-2", // 音量图标

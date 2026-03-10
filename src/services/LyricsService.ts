@@ -54,11 +54,6 @@ export class LyricsService {
 
 			return lyrics;
 		} catch (error) {
-			console.error(
-				"Failed to load lyrics for track:",
-				track.name,
-				error
-			);
 			this.currentLyrics = null;
 			this.emit("onLyricsLoaded", null);
 			return null;
@@ -78,7 +73,6 @@ export class LyricsService {
 		try {
 			return this.parseLyrics(track.metadata.lyrics);
 		} catch (error) {
-			console.warn("Failed to parse lyrics from metadata:", error);
 			return null;
 		}
 	}

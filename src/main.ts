@@ -36,9 +36,6 @@ export default class StatusBarMusicPlugin extends Plugin {
 			// 设置事件监听
 			this.setupEventListeners();
 
-			// 注册命令
-			this.registerCommands();
-
 			// 注册文件变化监听
 			this.registerFileEvents();
 
@@ -128,11 +125,6 @@ export default class StatusBarMusicPlugin extends Plugin {
 			this.saveSettings()
 		);
 	}
-
-	/**
-	 * 注册命令
-	 */
-	private registerCommands(): void {}
 
 	/**
 	 * 创建UI组件
@@ -345,8 +337,8 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 			// 预加载曲目到AudioPlayerService（不自动播放）
 			if (track) {
-				this.audioPlayer.loadTrack(track).catch((error) => {
-					console.warn("Failed to preload track:", error);
+				this.audioPlayer.loadTrack(track).catch(() => {
+					// 预加载失败，静默处理
 				});
 			}
 
@@ -485,7 +477,6 @@ export default class StatusBarMusicPlugin extends Plugin {
 			const lyrics = await this.lyricsService.loadLyricsForTrack(track);
 			this.musicHub.updateLyrics(lyrics);
 		} catch (error) {
-			console.warn("Failed to load lyrics for track:", track.name, error);
 			this.musicHub.updateLyrics(null);
 		}
 	}
@@ -546,7 +537,6 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 			await this.audioPlayer.togglePlayPause();
 		} catch (error) {
-			console.warn("Failed to toggle play/pause:", error);
 			// 播放失败时尝试重新加载曲目
 			const currentTrack = this.playlistManager.getCurrentTrack();
 			if (currentTrack) {
@@ -554,10 +544,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 					await this.audioPlayer.loadTrack(currentTrack);
 					await this.audioPlayer.play();
 				} catch (retryError) {
-					console.error(
-						"Failed to retry play after error:",
-						retryError
-					);
+					// 重试仍然失败，静默处理
 				}
 			}
 		}
@@ -699,6 +686,26 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 */
 	get metadataManager() {
 		return (this.playlistManager as any).metadataManager;
+	}
+
+	/**
+	 * 获取元数据缓存大小
+	 */
+	getMetadataCacheSize(): number {
+		const metadataManager = (this.playlistManager as any).metadataManager;
+		return metadataManager ? metadataManager.getCacheSize() : 0;
+	}
+
+	/**
+	 * 扫描并重新加载音乐库（供设置页面使用）
+	 */
+	async scanMusicLibrary(): Promise<{ trackCount: number; playlistCount: number }> {
+		this.playlistManager.initializeMetadata(this.settings);
+		await this.playlistManager.loadFullPlaylist();
+		await this.playlistManager.refreshMetadata();
+		const playlist = this.playlistManager.getPlaylist();
+		const playlists = this.playlistManager.getPlaylists();
+		return { trackCount: playlist.length, playlistCount: playlists.length };
 	}
 
 	/**

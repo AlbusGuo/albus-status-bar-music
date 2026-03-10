@@ -1,10 +1,9 @@
 import { PlaybackMode, PluginSettings } from "../types";
-import { PLAYBACK_MODES } from "./constants";
 
 export const DEFAULT_SETTINGS: PluginSettings = {
 	musicFolderPath: "",
 	favorites: [],
-	playbackMode: PLAYBACK_MODES[0] as PlaybackMode,
+	playbackMode: "loop" as PlaybackMode,
 	metadata: {},
 	showControlButtons: true,
 	closeHubOnClickOutside: false,
@@ -23,13 +22,6 @@ export function formatTime(seconds: number): string {
 		return "--:--";
 	}
 	return new Date(seconds * 1000).toISOString().slice(14, 19);
-}
-
-/**
- * 规范化文件路径
- */
-export function normalizePath(path: string): string {
-	return path.replace(/\\/g, "/");
 }
 
 /**

@@ -7,6 +7,7 @@ import { NEEDLE_IMAGE } from "../assets/needle";
  */
 export class VinylPlayer {
 	private containerEl: HTMLElement;
+	private discWrapper: HTMLElement;
 	private vinylDisc: HTMLElement;
 	private coverImage: HTMLElement;
 	private tonearmEl: HTMLElement;
@@ -41,8 +42,13 @@ export class VinylPlayer {
 		needleImg.src = NEEDLE_IMAGE;
 		needleImg.draggable = false;
 
-		// 黑胶唱片容器（可点击）
-		this.vinylDisc = this.containerEl.createEl("div", {
+		// 唱片包装器（轮播动画目标，承载不旋转的高光遮罩）
+		this.discWrapper = this.containerEl.createEl("div", {
+			cls: "vinyl-disc-wrapper"
+		});
+
+		// 黑胶唱片（旋转体）
+		this.vinylDisc = this.discWrapper.createEl("div", {
 			cls: "vinyl-disc"
 		});
 		
@@ -68,15 +74,21 @@ export class VinylPlayer {
 	 * 通过停止/重启 rAF 循环确保不会被残留回调覆盖
 	 */
 	resetRotation(): void {
+		this.setRotationAngle(0);
+	}
+
+	/**
+	 * 设置旋转角度（切歌轮播时继承侧边唱片的角度）
+	 */
+	setRotationAngle(angle: number): void {
 		const wasPlaying = this.isPlaying;
 		if (this.animationFrame) {
 			cancelAnimationFrame(this.animationFrame);
 			this.animationFrame = null;
 		}
-		this.rotationAngle = 0;
+		this.rotationAngle = angle;
 		this.lastTimestamp = 0;
-		this.vinylDisc.style.transform = 'rotate(0deg)';
-		this.vinylDisc.style.setProperty('--vinyl-counter-rotation', '0deg');
+		this.vinylDisc.style.transform = `rotate(${angle}deg)`;
 		if (wasPlaying) {
 			this.startRotation();
 		}
@@ -160,7 +172,6 @@ export class VinylPlayer {
 
 			// 应用旋转
 			this.vinylDisc.style.transform = `rotate(${this.rotationAngle}deg)`;
-			this.vinylDisc.style.setProperty('--vinyl-counter-rotation', `${-this.rotationAngle}deg`);
 
 			if (this.isPlaying) {
 				this.animationFrame = requestAnimationFrame(animate);
@@ -179,6 +190,13 @@ export class VinylPlayer {
 			this.animationFrame = null;
 		}
 		this.lastTimestamp = 0;
+	}
+
+	/**
+	 * 获取当前旋转角度
+	 */
+	getRotationAngle(): number {
+		return this.rotationAngle;
 	}
 
 	/**
