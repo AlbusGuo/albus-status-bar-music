@@ -54,14 +54,6 @@ export class AudioPlayerService {
 			this.emit("onEnded");
 		});
 
-		this.audio.addEventListener("loadstart", () => {
-			this.emit("onLoadStart");
-		});
-
-		this.audio.addEventListener("canplay", () => {
-			this.emit("onLoadEnd");
-		});
-
 		this.audio.addEventListener("error", (e) => {
 			this.emit("onError", new Error("Audio playback error"));
 		});

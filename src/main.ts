@@ -67,6 +67,9 @@ export default class StatusBarMusicPlugin extends Plugin {
 			// 应用已保存的歌词颜色
 			this.applyLyricsColors();
 
+			// 应用已保存的播放模式图标
+			this.musicHub.updateModeIcon(this.settings.playbackMode);
+
 			if (this.settings.musicFolderPath?.trim()) {
 				// 先从缓存加载播放列表（极快）
 				await this.playlistManager.loadFullPlaylist();
@@ -335,6 +338,12 @@ export default class StatusBarMusicPlugin extends Plugin {
 			// 只需要更新当前播放状态，而不是重新渲染整个列表
 			this.musicHub.updateCurrentPlayingTrack(track);
 
+			// 保存最后播放的曲目路径
+			if (track) {
+				this.settings.lastPlayedTrackPath = track.path;
+				this.debouncedSaveSettings();
+			}
+
 			// 预加载曲目到AudioPlayerService（不自动播放）
 			if (track) {
 				this.audioPlayer.loadTrack(track).catch(() => {
@@ -379,23 +388,8 @@ export default class StatusBarMusicPlugin extends Plugin {
 			this.updateLyricsTime();
 		});
 
-		this.audioPlayer.on("onLoadStart", () => {
-			if (this.statusBar) {
-				this.statusBar.showLoading(true);
-			}
-		});
-
-		this.audioPlayer.on("onLoadEnd", () => {
-			if (this.statusBar) {
-				this.statusBar.showLoading(false);
-			}
-		});
-
 		this.audioPlayer.on("onError", (error) => {
 			// 音频播放器错误处理
-			if (this.statusBar) {
-				this.statusBar.showLoading(false);
-			}
 		});
 	}
 

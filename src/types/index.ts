@@ -26,6 +26,7 @@ export interface PluginSettings {
 	lyricsHighlightColorDark: string;
 	lyricsHighlightColorLight: string;
 	showLoadNotice: boolean;
+	lastPlayedTrackPath: string;
 }
 
 export type PlaybackMode = "loop" | "single" | "shuffle";
@@ -39,8 +40,6 @@ export interface AudioPlayerEvents {
 	onPause: () => void;
 	onTimeUpdate: () => void;
 	onEnded: () => void;
-	onLoadStart: () => void;
-	onLoadEnd: () => void;
 	onError: (error: Error) => void;
 }
 

@@ -287,11 +287,6 @@
 	transform: scale(0.9);
 }
 
-.hub-function-button.is-loading {
-	/* 移除旋转动画 */
-	opacity: 0.7;
-}
-
 .hub-function-button .svg-icon {
 	width: 20px;
 	height: 20px;

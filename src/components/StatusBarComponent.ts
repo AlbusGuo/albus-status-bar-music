@@ -193,17 +193,6 @@ export class StatusBarComponent {
 	}
 
 	/**
-	 * 显示加载状态
-	 */
-	showLoading(loading: boolean): void {
-		if (loading) {
-			this.playPauseButton.addClass(CSS_CLASSES.IS_LOADING);
-		} else {
-			this.playPauseButton.removeClass(CSS_CLASSES.IS_LOADING);
-		}
-	}
-
-	/**
 	 * 显示或隐藏控制按钮
 	 */
 	setControlButtonsVisible(visible: boolean): void {

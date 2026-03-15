@@ -271,12 +271,17 @@ export class PlaylistManager {
 
 		this.viewPlaylist = sourcePlaylist;
 
-		// 如果当前曲目不在新列表中，加载第一首
+		// 如果当前曲目不在新列表中，尝试恢复上次播放的曲目，否则加载第一首
 		if (
 			!this.currentTrack ||
 			!this.fullPlaylist.some((t) => t.path === this.currentTrack!.path)
 		) {
-			this.loadTrack(this.viewPlaylist[0], false);
+			const currentSettings = this.settingsRef();
+			const lastPath = currentSettings.lastPlayedTrackPath;
+			const lastTrack = lastPath
+				? this.viewPlaylist.find((t) => t.path === lastPath)
+				: null;
+			this.loadTrack(lastTrack || this.viewPlaylist[0], false);
 		}
 
 		this.emit("onPlaylistUpdate", this.viewPlaylist);

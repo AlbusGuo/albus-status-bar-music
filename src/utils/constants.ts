@@ -15,7 +15,6 @@ export const CSS_CLASSES = {
 	IS_SCROLLING: "is-scrolling",
 	IS_DRAGGING: "is-dragging",
 	IS_FAVORITE: "is-favorite",
-	IS_LOADING: "is-loading",
 } as const;
 
 export const ICONS = {
