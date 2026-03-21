@@ -18,6 +18,8 @@ export default class StatusBarMusicPlugin extends Plugin {
 	private musicHub: MusicHubComponent;
 	private settingsTab: SettingsTab;
 	private playlistUpdateTimeout: NodeJS.Timeout | null = null;
+	private deferredTaskTimeouts: number[] = [];
+	private deferredIdleTaskIds: number[] = [];
 	private lyricsDisplayState: LyricsDisplayState = "off";
 	private debouncedSaveSettings = debounce(() => this.saveSettings(), 500);
 
@@ -71,37 +73,133 @@ export default class StatusBarMusicPlugin extends Plugin {
 			this.musicHub.updateModeIcon(this.settings.playbackMode);
 
 			if (this.settings.musicFolderPath?.trim()) {
-				// 先从缓存加载播放列表（极快）
-				await this.playlistManager.loadFullPlaylist();
-
-				const playlist = this.playlistManager.getViewPlaylist();
-				const trackCount = playlist.length;
-
-				// 如果首歌存在，立即加载歌词
-				const currentTrack = this.playlistManager.getCurrentTrack();
-				if (currentTrack) {
-					await this.loadLyricsForTrack(currentTrack);
-				}
-
-				// 后台刷新元数据（不阻塞 UI）
-				this.playlistManager.refreshMetadata().then(async () => {
-					await this.saveSettings();
-					if (this.settings.showLoadNotice) {
-						new Notice(`音乐库加载完成，共 ${trackCount} 首歌曲`);
-					}
-					
-					// 元数据刷新后，重新更新当前曲目的封面、侧边唱片和歌词
-					const refreshedTrack = this.playlistManager.getCurrentTrack();
-					if (refreshedTrack) {
-						this.musicHub.updateCurrentTrack(refreshedTrack);
-						this.updateHubSideVinyls();
-						await this.loadLyricsForTrack(refreshedTrack);
-					}
-				});
+				this.scheduleStartupMusicLibraryLoad();
 			}
 		} catch {
 			// 静默处理初始化错误
 		}
+	}
+
+	/**
+	 * 将启动阶段的音乐库初始化延后到浏览器空闲时执行，避免阻塞 Obsidian 其他初始化流程
+	 */
+	private scheduleStartupMusicLibraryLoad(): void {
+		this.scheduleDeferredTask(() => {
+			void this.loadMusicLibraryAfterStartup();
+		}, 300);
+	}
+
+	/**
+	 * 启动后异步加载播放列表，并在更晚的空闲阶段刷新完整元数据
+	 */
+	private async loadMusicLibraryAfterStartup(): Promise<void> {
+		try {
+			await this.playlistManager.loadFullPlaylist();
+
+			const playlist = this.playlistManager.getViewPlaylist();
+			const trackCount = playlist.length;
+
+			const currentTrack = this.playlistManager.getCurrentTrack();
+			if (currentTrack) {
+				void this.loadLyricsForTrack(currentTrack);
+			}
+
+			this.scheduleDeferredTask(() => {
+				void this.refreshMusicLibraryAfterStartup(trackCount);
+			}, 1200);
+		} catch {
+			// 静默处理初始化错误
+		}
+	}
+
+	/**
+	 * 在非关键启动阶段刷新完整元数据，降低对索引和其它插件初始化的干扰
+	 */
+	private async refreshMusicLibraryAfterStartup(trackCount: number): Promise<void> {
+		try {
+			await this.playlistManager.refreshMetadata();
+			await this.saveSettings();
+
+			if (this.settings.showLoadNotice) {
+				new Notice(`音乐库加载完成，共 ${trackCount} 首歌曲`);
+			}
+
+			const refreshedTrack = this.playlistManager.getCurrentTrack();
+			if (refreshedTrack) {
+				this.musicHub.updateCurrentTrack(refreshedTrack);
+				this.updateHubSideVinyls();
+				await this.loadLyricsForTrack(refreshedTrack);
+			}
+		} catch {
+			// 静默处理后台刷新错误
+		}
+	}
+
+	/**
+	 * 将任务调度到浏览器空闲时执行，必要时增加少量延迟以避开 Obsidian 启动关键路径
+	 */
+	private scheduleDeferredTask(task: () => void, delay: number = 0): void {
+		const scheduleAtIdle = () => {
+			const requestIdleCallback = (window as any).requestIdleCallback as
+				| ((callback: () => void, options?: { timeout: number }) => number)
+				| undefined;
+
+			if (requestIdleCallback) {
+				let idleTaskId = 0;
+				idleTaskId = requestIdleCallback(() => {
+					this.deferredIdleTaskIds = this.deferredIdleTaskIds.filter(
+						(id) => id !== idleTaskId
+					);
+					task();
+				}, { timeout: 2000 });
+				this.deferredIdleTaskIds.push(idleTaskId);
+				return;
+			}
+
+			let timeoutId = 0;
+			timeoutId = window.setTimeout(() => {
+				this.deferredTaskTimeouts = this.deferredTaskTimeouts.filter(
+					(id) => id !== timeoutId
+				);
+				task();
+			}, 0);
+			this.deferredTaskTimeouts.push(timeoutId);
+		};
+
+		if (delay > 0) {
+			let timeoutId = 0;
+			timeoutId = window.setTimeout(() => {
+				this.deferredTaskTimeouts = this.deferredTaskTimeouts.filter(
+					(id) => id !== timeoutId
+				);
+				scheduleAtIdle();
+			}, delay);
+			this.deferredTaskTimeouts.push(timeoutId);
+			return;
+		}
+
+		scheduleAtIdle();
+	}
+
+	/**
+	 * 清理延后调度的启动任务
+	 */
+	private clearDeferredTasks(): void {
+		this.deferredTaskTimeouts.forEach((timeoutId) => {
+			window.clearTimeout(timeoutId);
+		});
+		this.deferredTaskTimeouts = [];
+
+		const cancelIdleCallback = (window as any).cancelIdleCallback as
+			| ((id: number) => void)
+			| undefined;
+
+		if (cancelIdleCallback) {
+			this.deferredIdleTaskIds.forEach((idleTaskId) => {
+				cancelIdleCallback(idleTaskId);
+			});
+		}
+		this.deferredIdleTaskIds = [];
 	}
 
 	/**
@@ -751,6 +849,8 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 * 卸载插件
 	 */
 	onunload(): void {
+		this.clearDeferredTasks();
+
 		// 清理防抖定时器
 		if (this.playlistUpdateTimeout) {
 			clearTimeout(this.playlistUpdateTimeout);

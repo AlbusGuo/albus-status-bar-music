@@ -1,6 +1,9 @@
 import { App, TFile, normalizePath } from "obsidian";
 import { TrackMetadata, PluginSettings } from "../types";
-import { isSupportedAudioFile } from "../utils/helpers";
+import {
+	collectSupportedAudioFilesFromFolder,
+	isSupportedAudioFile,
+} from "../utils/helpers";
 import { MetadataParser } from "./MetadataParser";
 
 /**
@@ -110,16 +113,13 @@ export class MetadataManager {
 			return;
 		}
 
-		const allFiles = this.app.vault.getFiles();
 		const musicFiles: TFile[] = [];
 
 		for (const folderPath of validFolders) {
 			const normalizedPath = normalizePath(folderPath);
-			for (const file of allFiles) {
-				if (file.path.startsWith(normalizedPath) && isSupportedAudioFile(file.name)) {
-					musicFiles.push(file);
-				}
-			}
+			musicFiles.push(
+				...collectSupportedAudioFilesFromFolder(this.app, normalizedPath)
+			);
 		}
 
 		this.totalTracks = musicFiles.length;

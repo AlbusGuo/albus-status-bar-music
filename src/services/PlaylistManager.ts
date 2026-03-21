@@ -7,7 +7,7 @@ import {
 	PluginSettings,
 	TrackMetadata,
 } from "../types";
-import { isSupportedAudioFile } from "../utils/helpers";
+import { collectSupportedAudioFilesFromFolder } from "../utils/helpers";
 import { MetadataManager } from "./MetadataManager";
 
 export class PlaylistManager {
@@ -15,6 +15,7 @@ export class PlaylistManager {
 	private settings: PluginSettings;
 	private settingsRef: () => PluginSettings;
 	private metadataManager: MetadataManager;
+	private readonly scanBatchSize: number = 200;
 	private fullPlaylist: MusicTrack[] = [];
 	private viewPlaylist: MusicTrack[] = [];
 	private currentTrack: MusicTrack | null = null;
@@ -40,6 +41,13 @@ export class PlaylistManager {
 	 */
 	initializeMetadata(settings: PluginSettings): void {
 		this.metadataManager.initializeFromSettings(settings);
+	}
+
+	/**
+	 * 扫描大音乐库时分批让出主线程，减少对 Obsidian 其它工作的阻塞
+	 */
+	private async yieldToMainThread(): Promise<void> {
+		await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
 	}
 
 	/**
@@ -97,33 +105,16 @@ export class PlaylistManager {
 		}
 
 		const musicFolderPath = normalizePath(currentSettings.musicFolderPath);
-		
-		// 一次性收集所有音乐文件（同步操作，足够快不需要分批）
-		const allFiles = this.app.vault.getFiles();
-		const collectedFiles = new Map<string, TFile>();
-		const playlistFolders = new Set<string>();
-
-		for (const file of allFiles) {
-			if (isSupportedAudioFile(file.name) && file.path.startsWith(musicFolderPath)) {
-				collectedFiles.set(file.path, file);
-				
-				// 检测子文件夹作为歌单
-				const relativePath = file.path.substring(musicFolderPath.length);
-				const pathParts = relativePath.split('/').filter(part => part);
-				
-				if (pathParts.length > 1) {
-					const playlistName = pathParts[0];
-					playlistFolders.add(playlistName);
-				}
-			}
-		}
-
-		// 文件处理完成
+		const fileArray = collectSupportedAudioFilesFromFolder(
+			this.app,
+			musicFolderPath
+		);
 
 		// 创建播放列表项和歌单映射
-		const fileArray = Array.from(collectedFiles.values());
-		
-		this.fullPlaylist = fileArray.map((file, index) => {
+		this.fullPlaylist = [];
+
+		for (let index = 0; index < fileArray.length; index++) {
+			const file = fileArray[index];
 			// 从 MetadataManager 获取元数据（封面会延迟加载）
 			const savedMetadata = this.metadataManager.getMetadata(file.path);
 			const metadata = savedMetadata || {
@@ -157,9 +148,13 @@ export class PlaylistManager {
 					playlist.push(track);
 				}
 			}
-			
-			return track;
-		});
+
+			this.fullPlaylist.push(track);
+
+			if ((index + 1) % this.scanBatchSize === 0 && index + 1 < fileArray.length) {
+				await this.yieldToMainThread();
+			}
+		}
 
 		// 恢复用户之前选择的分类（如果仍然有效）
 		if (savedCategory && savedCategory !== "all" && savedCategory !== "favorite") {
@@ -192,9 +187,6 @@ export class PlaylistManager {
 		}
 
 		try {
-			// 重新加载整个音乐库
-			await this.loadFullPlaylist();
-			
 			// 使用 MetadataManager 刷新元数据
 			await this.metadataManager.refreshAllMetadata([currentSettings.musicFolderPath]);
 			

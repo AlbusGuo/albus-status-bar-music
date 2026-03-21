@@ -1,3 +1,4 @@
+import { App, TAbstractFile, TFile, TFolder, normalizePath } from "obsidian";
 import { PlaybackMode, PluginSettings } from "../types";
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -31,6 +32,50 @@ export function formatTime(seconds: number): string {
 export function isSupportedAudioFile(filename: string): boolean {
 	const ext = filename.split(".").pop()?.toLowerCase();
 	return ["flac", "mp3", "wav", "m4a", "ogg"].includes(ext || "");
+}
+
+/**
+ * 仅递归遍历指定音乐目录，避免扫描整个 vault
+ */
+export function collectSupportedAudioFilesFromFolder(
+	app: App,
+	folderPath: string
+): TFile[] {
+	const normalizedPath = normalizePath(folderPath);
+	const root = app.vault.getAbstractFileByPath(normalizedPath);
+
+	if (!root) {
+		return [];
+	}
+
+	if (root instanceof TFile) {
+		return isSupportedAudioFile(root.name) ? [root] : [];
+	}
+
+	if (!(root instanceof TFolder)) {
+		return [];
+	}
+
+	const collectedFiles: TFile[] = [];
+	const stack: TAbstractFile[] = [...root.children];
+
+	while (stack.length > 0) {
+		const current = stack.pop();
+		if (!current) {
+			continue;
+		}
+
+		if (current instanceof TFolder) {
+			stack.push(...current.children);
+			continue;
+		}
+
+		if (current instanceof TFile && isSupportedAudioFile(current.name)) {
+			collectedFiles.push(current);
+		}
+	}
+
+	return collectedFiles;
 }
 
 /**
