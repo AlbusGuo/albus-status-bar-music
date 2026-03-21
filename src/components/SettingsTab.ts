@@ -127,7 +127,7 @@ export class SettingsTab extends PluginSettingTab {
 	 */
 	private displayLyricsGroup(): void {
 		const group = new SettingGroup(this.containerEl)
-			.setHeading("外观");
+			.setHeading("播放器外观");
 
 		group.addSetting((s) => {
 			s.setName("播放器主色调")

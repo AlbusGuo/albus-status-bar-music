@@ -171,7 +171,6 @@ export class PlaylistManager {
 		}
 
 		this.updateView();
-		this.emit("onPlaylistUpdate", this.viewPlaylist);
 	}
 
 	/**
@@ -207,9 +206,6 @@ export class PlaylistManager {
 			
 			// 重新更新视图以确保歌单过滤正确
 			this.updateView();
-			
-			// 触发UI更新
-			this.emit("onPlaylistUpdate", this.viewPlaylist);
 			
 		} catch (error) {
 			// 即使刷新失败，也要确保UI有响应
@@ -273,7 +269,7 @@ export class PlaylistManager {
 			const lastTrack = lastPath
 				? this.viewPlaylist.find((t) => t.path === lastPath)
 				: null;
-			this.loadTrack(lastTrack || this.viewPlaylist[0], false);
+			this.loadTrack(lastTrack || this.viewPlaylist[0]);
 		}
 
 		this.emit("onPlaylistUpdate", this.viewPlaylist);
@@ -294,7 +290,6 @@ export class PlaylistManager {
 	setCategory(category: CategoryType): void {
 		this.currentCategory = category;
 		this.updateView();
-		this.emit("onPlaylistUpdate", this.viewPlaylist);
 		this.emit("onCategoryChange", category);
 	}
 
@@ -331,7 +326,7 @@ export class PlaylistManager {
 	/**
 	 * 加载曲目
 	 */
-	loadTrack(track: MusicTrack | null, autoPlay: boolean = false): void {
+	loadTrack(track: MusicTrack | null): void {
 		this.currentTrack = track;
 		this.emit("onTrackChange", track);
 	}
@@ -354,7 +349,7 @@ export class PlaylistManager {
 			const pool = candidates.length > 0 ? candidates : this.viewPlaylist;
 			const randomIndex = Math.floor(Math.random() * pool.length);
 			const nextTrack = pool[randomIndex];
-			this.loadTrack(nextTrack, true);
+			this.loadTrack(nextTrack);
 			return nextTrack;
 		}
 
@@ -365,7 +360,7 @@ export class PlaylistManager {
 		const nextIndex = (currentIndex + 1) % this.viewPlaylist.length;
 		const nextTrack = this.viewPlaylist[nextIndex];
 
-		this.loadTrack(nextTrack, true);
+		this.loadTrack(nextTrack);
 		return nextTrack;
 	}
 
@@ -378,7 +373,7 @@ export class PlaylistManager {
 		if (this.settings.playbackMode === "shuffle" && this.playHistory.length > 0) {
 			// 随机模式：回退到播放历史中的上一首
 			const prevTrack = this.playHistory.pop()!;
-			this.loadTrack(prevTrack, true);
+			this.loadTrack(prevTrack);
 			return prevTrack;
 		}
 
@@ -394,7 +389,7 @@ export class PlaylistManager {
 
 		const prevTrack = this.viewPlaylist[prevIndex];
 
-		this.loadTrack(prevTrack, true);
+		this.loadTrack(prevTrack);
 		return prevTrack;
 	}
 
@@ -515,7 +510,6 @@ export class PlaylistManager {
 		
 		// 更新视图
 		this.updateView();
-		this.emit("onPlaylistUpdate", this.viewPlaylist);
 		
 		// 元数据缓存已清理
 	}

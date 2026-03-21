@@ -46,7 +46,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 
 			// 布局就绪后异步加载播放列表并刷新元数据
 			this.app.workspace.onLayoutReady(() => this.initializePlugin());
-		} catch (error) {
+		} catch {
 			// 静默处理错误，避免干扰用户体验
 		}
 	}
@@ -548,7 +548,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 	 */
 	private async playTrack(track: any): Promise<void> {
 		try {
-			this.playlistManager.loadTrack(track, true);
+			this.playlistManager.loadTrack(track);
 			await this.audioPlayer.loadTrack(track);
 			await this.audioPlayer.play();
 		} catch (error) {

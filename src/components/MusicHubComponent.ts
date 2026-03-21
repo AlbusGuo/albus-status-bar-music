@@ -45,7 +45,6 @@ export class MusicHubComponent {
 	private events: {
 		onFavoriteToggle?: () => void;
 		onSearch?: (query: string) => void;
-		onPlaylistToggle?: () => void;
 		onCategoryChange?: (category: string) => void;
 		onGetCategories?: () => { value: string; label: string }[];
 		onGetCurrentCategory?: () => string;
@@ -63,12 +62,8 @@ export class MusicHubComponent {
 	} = {};
 
 	constructor() {
-		try {
-			this.createElements();
-			this.setupEventListeners();
-		} catch (error) {
-			throw error;
-		}
+		this.createElements();
+		this.setupEventListeners();
 	}
 
 	/**
