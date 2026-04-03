@@ -41,36 +41,3 @@
 	line-height: 1.5;
 	white-space: pre-line;
 }
-
-.confirm-modal-buttons {
-	display: flex;
-	gap: 12px;
-	justify-content: flex-end;
-	margin-top: 20px;
-}
-
-.confirm-modal-buttons button {
-	padding: 8px 16px;
-	border: none;
-	border-radius: 4px;
-	cursor: pointer;
-	font-size: 14px;
-}
-
-.confirm-modal-buttons .mod-cta {
-	background-color: var(--interactive-normal);
-	color: var(--text-normal);
-}
-
-.confirm-modal-buttons .mod-cta:hover {
-	background-color: var(--interactive-hover);
-}
-
-.confirm-modal-buttons .mod-warning {
-	background-color: var(--color-red);
-	color: var(--text-on-accent);
-}
-
-.confirm-modal-buttons .mod-warning:hover {
-	background-color: var(--color-red-hover, #d32f2f);
-}

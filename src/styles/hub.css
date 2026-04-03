@@ -42,6 +42,7 @@
 	filter: blur(20px) brightness(0.4);
 	z-index: -1;
 	opacity: 0;
+	will-change: opacity;
 	transition: opacity 0.5s ease;
 }
 
@@ -83,19 +84,13 @@
 	animation: subtle-gradient-shift 8s ease-in-out infinite;
 }
 
-/* 动态渐变动画 */
+/* 动态渐变动画 — 仅动画 opacity 避免触发 background 重绘 */
 @keyframes subtle-gradient-shift {
 	0%, 100% {
-		background: linear-gradient(135deg, 
-			#4a5568 0%, 
-			#2d3748 50%, 
-			#1a202c 100%);
+		opacity: 0.6;
 	}
 	50% {
-		background: linear-gradient(135deg, 
-			#2d3748 0%, 
-			#4a5568 50%, 
-			#2d3748 100%);
+		opacity: 0.45;
 	}
 }
 
@@ -135,17 +130,6 @@
 
 .albus-status-bar-music-hub-container.has-background .hub-function-button:hover {
 	background-color: rgba(255, 255, 255, 0.2);
-}
-
-/* 背景模式下歌词按钮的特殊样式 */
-.albus-status-bar-music-hub-container.has-background .hub-lyrics-button {
-	background-color: rgba(255, 255, 255, 0.15);
-	border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.albus-status-bar-music-hub-container.has-background .hub-lyrics-button:hover {
-	background-color: rgba(255, 255, 255, 0.25);
-	border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* 背景模式下控制按钮样式 */
@@ -240,15 +224,6 @@
 	color: var(--icon-color) !important;
 }
 
-/* 歌词按钮特殊样式 - 固定小尺寸 */
-.hub-lyrics-button {
-	width: 32px;
-	height: 32px;
-	min-width: 32px;
-	min-height: 32px;
-	flex-shrink: 0;
-}
-
 .hub-function-button:hover {
 	background-color: var(--background-modifier-hover);
 }
@@ -261,12 +236,6 @@
 	width: 20px;
 	height: 20px;
 	color: var(--text-on-accent);
-}
-
-/* 歌词按钮图标特殊尺寸 */
-.hub-lyrics-button .svg-icon {
-	width: 18px;
-	height: 18px;
 }
 
 .hub-function-button.is-favorite .svg-icon {
@@ -572,7 +541,7 @@
 	-webkit-appearance: none;
 	appearance: none;
 	opacity: 0.7;
-	transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1), transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -603,8 +572,8 @@
 		radial-gradient(circle at center, #1a1a1a 0%, #111 60%, #0a0a0a 100%);
 }
 
-/* 侧边唱片上下高光 */
-.hub-side-vinyl-disc::before {
+/* 侧边唱片上下高光（挂在不旋转的 button 上，与中心 vinyl-disc-wrapper 一致） */
+.hub-side-vinyl::before {
 	content: '';
 	position: absolute;
 	inset: 0;
@@ -616,7 +585,23 @@
 		rgba(255, 255, 255, 0.06) 100%
 	);
 	pointer-events: none;
-	z-index: 2;
+	z-index: 4;
+}
+
+/* 侧边唱片反光效果（同上） */
+.hub-side-vinyl::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		135deg,
+		rgba(255, 255, 255, 0.06) 0%,
+		transparent 40%,
+		transparent 60%,
+		rgba(255, 255, 255, 0.03) 100%
+	);
+	pointer-events: none;
+	z-index: 1;
 }
 
 /* 侧边唱片封面容器 */

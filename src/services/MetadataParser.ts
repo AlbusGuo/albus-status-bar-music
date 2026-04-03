@@ -249,11 +249,4 @@ export class MetadataParser {
 
 		return null;
 	}
-
-	/**
-	 * 清理资源
-	 */
-	cleanup(): void {
-		// No persistent resources to clean up with base64 data URIs
-	}
 }

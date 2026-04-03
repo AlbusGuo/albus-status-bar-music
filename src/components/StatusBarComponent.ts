@@ -164,35 +164,6 @@ export class StatusBarComponent {
 	}
 
 	/**
-	 * 设置按钮状态
-	 */
-	setButtonEnabled(button: "prev" | "play" | "next", enabled: boolean): void {
-		const buttonEl = this.getButtonElement(button);
-		if (buttonEl) {
-			buttonEl.disabled = !enabled;
-			buttonEl.style.opacity = enabled ? "1" : "0.5";
-		}
-	}
-
-	/**
-	 * 获取按钮元素
-	 */
-	private getButtonElement(
-		button: "prev" | "play" | "next"
-	): HTMLButtonElement | null {
-		switch (button) {
-			case "prev":
-				return this.prevButton;
-			case "play":
-				return this.playPauseButton;
-			case "next":
-				return this.nextButton;
-			default:
-				return null;
-		}
-	}
-
-	/**
 	 * 显示或隐藏控制按钮
 	 */
 	setControlButtonsVisible(visible: boolean): void {
@@ -216,17 +187,6 @@ export class StatusBarComponent {
 		this.lyricsButton.removeClass("active", "active-floating");
 		if (state === "floating") {
 			this.lyricsButton.addClass("active");
-		}
-	}
-
-	/**
-	 * 设置歌词按钮激活状态
-	 */
-	setLyricsButtonActive(active: boolean): void {
-		if (active) {
-			this.lyricsButton.addClass("active");
-		} else {
-			this.lyricsButton.removeClass("active");
 		}
 	}
 

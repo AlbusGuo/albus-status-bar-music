@@ -1,7 +1,7 @@
 {
 	"name": "albus-status-bar-music",
-	"version": "1.1.2",
-	"description": "An Obsidian plugin that plays music from your vault with a vinyl-style status bar player.",
+	"version": "1.1.3",
+	"description": "A vinyl-style music player in the status bar with lyrics display, playlist management, and album art.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

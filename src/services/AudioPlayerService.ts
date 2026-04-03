@@ -170,13 +170,6 @@ export class AudioPlayerService {
 	}
 
 	/**
-	 * 设置播放速度
-	 */
-	setPlaybackRate(rate: number): void {
-		this.audio.playbackRate = Math.max(0.25, Math.min(4, rate));
-	}
-
-	/**
 	 * 获取当前播放时间
 	 */
 	getCurrentTime(): number {
@@ -202,25 +195,6 @@ export class AudioPlayerService {
 	}
 
 	/**
-	 * 获取缓冲进度
-	 */
-	getBufferedPercent(): number {
-		if (this.audio.buffered.length === 0) {
-			return 0;
-		}
-
-		const duration = this.getDuration();
-		if (!duration || !isFinite(duration)) {
-			return 0;
-		}
-
-		const bufferedEnd = this.audio.buffered.end(
-			this.audio.buffered.length - 1
-		);
-		return bufferedEnd / duration;
-	}
-
-	/**
 	 * 检查是否正在播放
 	 */
 	getIsPlaying(): boolean {
@@ -235,37 +209,9 @@ export class AudioPlayerService {
 	}
 
 	/**
-	 * 检查是否已加载
-	 */
-	isLoaded(): boolean {
-		return this.audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
-	}
-	
-	/**
-	 * 检查是否有曲目已加载（用于预加载检测）
-	 */
-	isTrackLoaded(): boolean {
-		return this.currentTrack !== null && this.audio.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
-	}
-
-	/**
-	 * 检查是否可以播放
-	 */
-	canPlay(): boolean {
-		return this.audio.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA;
-	}
-
-	/**
-	 * 获取音频元素（用于高级操作）
-	 */
-	getAudioElement(): HTMLAudioElement {
-		return this.audio;
-	}
-
-	/**
 	 * 停止播放并清理
 	 */
-	stop(): void {
+	private stop(): void {
 		this.pause();
 		this.audio.currentTime = 0;
 	}

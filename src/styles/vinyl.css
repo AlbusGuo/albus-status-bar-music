@@ -87,6 +87,7 @@
 	inset: 0;
 	transform-origin: center center;
 	cursor: pointer;
+	will-change: transform;
 	background:
 		repeating-radial-gradient(
 			circle at center,

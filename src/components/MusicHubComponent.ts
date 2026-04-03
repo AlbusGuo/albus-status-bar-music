@@ -479,13 +479,6 @@ export class MusicHubComponent {
 	}
 
 	/**
-	 * 获取当前音量
-	 */
-	getVolume(): number {
-		return this.currentVolume;
-	}
-
-	/**
 	 * 设置初始音量
 	 */
 	setInitialVolume(volume: number): void {
@@ -849,6 +842,8 @@ export class MusicHubComponent {
 		const ENTER_DUR = 280;
 		const EASING = "cubic-bezier(0.33, 0, 0.2, 1)";
 		const ENTER_EASING = "cubic-bezier(0.1, 0, 0.2, 1)";
+		const FILTER_SIDE = "drop-shadow(0 0 0.5px rgba(0,0,0,0.5))";
+		const FILTER_CENTER = "drop-shadow(0 0 0.5px rgba(0,0,0,0.5)) drop-shadow(0 4px 20px rgba(0,0,0,0.5))";
 
 		// 禁用 CSS transition 防止与 Web Animations 冲突
 		this.leftVinylButton.style.transition = "none";
@@ -871,14 +866,14 @@ export class MusicHubComponent {
 
 			// 中间唱片：滑向左侧位置并缩小
 			const a2 = centerDisc.animate([
-				{ transform: "scale(1)", opacity: 1 },
-				{ transform: `scale(${SIDE_SCALE * SIDE_W / CENTER_W}) translateX(${-stepL2C / (SIDE_SCALE * SIDE_W / CENTER_W)}px)`, opacity: 0.7 },
+				{ transform: "scale(1)", opacity: 1, filter: FILTER_CENTER },
+				{ transform: `scale(${SIDE_SCALE * SIDE_W / CENTER_W}) translateX(${-stepL2C / (SIDE_SCALE * SIDE_W / CENTER_W)}px)`, opacity: 0.7, filter: FILTER_SIDE },
 			], { duration: DURATION, easing: EASING, fill: "forwards" });
 
 			// 右侧唱片：滑向中间位置并放大
 			const a3 = this.rightVinylButton.animate([
-				{ transform: `scale(${SIDE_SCALE}) translateX(${SIDE_TX}px)`, opacity: 0.7 },
-				{ transform: `scale(${CENTER_W / SIDE_W}) translateX(${(-stepC2R + SIDE_SCALE * SIDE_TX) / (CENTER_W / SIDE_W)}px)`, opacity: 1 },
+				{ transform: `scale(${SIDE_SCALE}) translateX(${SIDE_TX}px)`, opacity: 0.7, filter: FILTER_SIDE },
+				{ transform: `scale(${CENTER_W / SIDE_W}) translateX(${(-stepC2R + SIDE_SCALE * SIDE_TX) / (CENTER_W / SIDE_W)}px)`, opacity: 1, filter: FILTER_CENTER },
 			], { duration: DURATION, easing: EASING, fill: "forwards" });
 
 			this.carouselAnimations = [a1, a2, a3];
@@ -934,14 +929,14 @@ export class MusicHubComponent {
 
 			// 中间唱片：滑向右侧位置并缩小
 			const a2 = centerDisc.animate([
-				{ transform: "scale(1)", opacity: 1 },
-				{ transform: `scale(${SIDE_SCALE * SIDE_W / CENTER_W}) translateX(${stepC2R / (SIDE_SCALE * SIDE_W / CENTER_W)}px)`, opacity: 0.7 },
+				{ transform: "scale(1)", opacity: 1, filter: FILTER_CENTER },
+				{ transform: `scale(${SIDE_SCALE * SIDE_W / CENTER_W}) translateX(${stepC2R / (SIDE_SCALE * SIDE_W / CENTER_W)}px)`, opacity: 0.7, filter: FILTER_SIDE },
 			], { duration: DURATION, easing: EASING, fill: "forwards" });
 
 			// 左侧唱片：滑向中间位置并放大
 			const a3 = this.leftVinylButton.animate([
-				{ transform: `scale(${SIDE_SCALE}) translateX(${-SIDE_TX}px)`, opacity: 0.7 },
-				{ transform: `scale(${CENTER_W / SIDE_W}) translateX(${(stepL2C - SIDE_SCALE * SIDE_TX) / (CENTER_W / SIDE_W)}px)`, opacity: 1 },
+				{ transform: `scale(${SIDE_SCALE}) translateX(${-SIDE_TX}px)`, opacity: 0.7, filter: FILTER_SIDE },
+				{ transform: `scale(${CENTER_W / SIDE_W}) translateX(${(stepL2C - SIDE_SCALE * SIDE_TX) / (CENTER_W / SIDE_W)}px)`, opacity: 1, filter: FILTER_CENTER },
 			], { duration: DURATION, easing: EASING, fill: "forwards" });
 
 			this.carouselAnimations = [a1, a2, a3];
@@ -1253,29 +1248,6 @@ export class MusicHubComponent {
 				this.events.onTrackSelect?.(track);
 			});
 		});
-	}
-
-
-
-	/**
-	 * 获取容器元素
-	 */
-	getElement(): HTMLElement {
-		return this.containerEl;
-	}
-
-	/**
-	 * 检查是否可见
-	 */
-	isOpen(): boolean {
-		return this.isVisible;
-	}
-
-	/**
-	 * 检查悬浮歌词是否显示
-	 */
-	isFloatingLyricsVisible(): boolean {
-		return this.floatingLyricsComponent?.isVisible() || false;
 	}
 
 	/**

@@ -2,7 +2,6 @@ import { App, TFile, normalizePath } from "obsidian";
 import { TrackMetadata, PluginSettings } from "../types";
 import {
 	collectSupportedAudioFilesFromFolder,
-	isSupportedAudioFile,
 } from "../utils/helpers";
 import { MetadataParser } from "./MetadataParser";
 
@@ -26,8 +25,6 @@ export class MetadataManager {
 		this.app = app;
 		this.parser = new MetadataParser();
 	}
-
-	
 
 	/**
 	 * 设置保存回调
@@ -148,23 +145,28 @@ export class MetadataManager {
 		this.onProgressUpdate?.(this.processedTracks, this.totalTracks);
 
 		// 仅处理不完整或新增的文件
+		// 逐个顺序处理，配合时间预算让步策略
+		// 旧方案 Promise.all(10) 会导致多个 CPU 密集任务（parseBuffer、封面提取）
+		// 堆积在微任务队列中长时间霸占主线程，饿死 Obsidian 索引/渲染等关键进程
 		if (filesToProcess.length > 0) {
 			this.isDirty = true;
-			const concurrencyLimit = 10;
-			
-			for (let i = 0; i < filesToProcess.length; i += concurrencyLimit) {
-				const batch = filesToProcess.slice(i, i + concurrencyLimit);
-				await Promise.all(batch.map(async (file) => {
-					try {
-						await this.processFile(file);
-					} catch {
-						// 错误已在 processFile 中处理
-					}
-					this.processedTracks++;
-					this.onProgressUpdate?.(this.processedTracks, this.totalTracks);
-				}));
-				// 每批次处理后让出主线程，避免阻塞 Obsidian 其他进程
-				await new Promise(resolve => setTimeout(resolve, 0));
+
+			let lastYieldTime = performance.now();
+			for (const file of filesToProcess) {
+				try {
+					await this.processFile(file);
+				} catch {
+					// 错误已在 processFile 中处理
+				}
+				this.processedTracks++;
+				this.onProgressUpdate?.(this.processedTracks, this.totalTracks);
+
+				// 时间预算让步：自上次让步累计超过 8ms 时交还主线程控制权
+				// 确保 Obsidian 文件索引、UI 渲染等进程不被饿死
+				if (performance.now() - lastYieldTime > 8) {
+					await new Promise<void>(resolve => setTimeout(resolve, 0));
+					lastYieldTime = performance.now();
+				}
 			}
 			
 			this.scheduleSave();
@@ -215,22 +217,11 @@ export class MetadataManager {
 		return this.parser.extractMetadata(arrayBuffer);
 	}
 
-	
-
 	/**
 	 * 获取文件的元数据
 	 */
 	getMetadata(filePath: string): TrackMetadata | null {
 		return this.cache.get(filePath) || null;
-	}
-
-	
-
-	/**
-	 * 获取所有元数据
-	 */
-	getAllMetadata(): Map<string, TrackMetadata> {
-		return new Map(this.cache);
 	}
 
 	/**
@@ -239,36 +230,6 @@ export class MetadataManager {
 	getCacheSize(): number {
 		return this.cache.size;
 	}
-
-	/**
-	 * 处理文件变化
-	 */
-	handleFileChange(filePath: string, type: 'create' | 'delete' | 'modify'): void {
-		const isMusicFile = isSupportedAudioFile(filePath.split('/').pop() || '');
-		if (!isMusicFile) return;
-
-		this.isDirty = true;
-
-		if (type === 'delete') {
-			this.cache.delete(filePath);
-			this.scheduleSave();
-		} else {
-			setTimeout(async () => {
-				try {
-					const file = this.app.vault.getAbstractFileByPath(filePath);
-					if (file instanceof TFile) {
-						const metadata = await this.extractFileMetadata(file);
-						this.cache.set(filePath, metadata);
-						this.scheduleSave();
-					}
-				} catch {
-					// Failed to update metadata
-				}
-			}, 500);
-		}
-	}
-
-	
 
 	/**
 	 * 计划保存（防抖）
@@ -294,12 +255,6 @@ export class MetadataManager {
 		return this.isDirty;
 	}
 
-	
-
-	
-
-	
-
 	/**
 	 * 清理资源
 	 */
@@ -307,7 +262,6 @@ export class MetadataManager {
 		if (this.saveTimeout) {
 			clearTimeout(this.saveTimeout);
 		}
-		this.parser.cleanup();
 		this.cache.clear();
 	}
 }

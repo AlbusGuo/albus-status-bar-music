@@ -661,20 +661,6 @@ export class LyricsComponent extends Component {
 	}
 
 	/**
-	 * 获取当前歌词
-	 */
-	getCurrentLyrics(): ParsedLyrics | null {
-		return this.currentLyrics;
-	}
-
-	/**
-	 * 获取当前行索引
-	 */
-	getCurrentLineIndex(): number {
-		return this.currentLineIndex;
-	}
-
-	/**
 	 * 显示无歌词消息
 	 */
 	private showNoLyricsMessage(): void {

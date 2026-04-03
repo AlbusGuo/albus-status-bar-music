@@ -30,11 +30,7 @@ export class PlaylistManager {
 		this.settings = settings;
 		this.settingsRef = settingsRef || (() => settings);
 		this.metadataManager = new MetadataManager(app);
-		
-		
 	}
-
-	
 
 	/**
 	 * 初始化元数据管理器
@@ -471,13 +467,6 @@ export class PlaylistManager {
 	 */
 	getViewPlaylist(): MusicTrack[] {
 		return this.viewPlaylist;
-	}
-
-	/**
-	 * 获取完整播放列表
-	 */
-	getFullPlaylist(): MusicTrack[] {
-		return this.fullPlaylist;
 	}
 
 	/**
