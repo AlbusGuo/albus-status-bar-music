@@ -19,9 +19,8 @@ export class PlaylistManager {
 	private fullPlaylist: MusicTrack[] = [];
 	private viewPlaylist: MusicTrack[] = [];
 	private currentTrack: MusicTrack | null = null;
-	private currentCategory: CategoryType = "all";
+	private currentFilter: CategoryType = "all";
 	private searchQuery: string = "";
-	private playlists: Map<string, MusicTrack[]> = new Map();
 	private events: Partial<PlaylistManagerEvents> = {};
 	private playHistory: MusicTrack[] = [];
 
@@ -82,17 +81,13 @@ export class PlaylistManager {
 	}
 
 	/**
-	 * 加载完整播放列表（新的文件夹结构）
+	 * 加载音乐文件夹内所有音频文件（不递归子文件夹）
 	 */
 	async loadFullPlaylist(): Promise<void> {
-		// 保存当前用户选择的分类
-		const savedCategory = this.currentCategory;
+		const savedFilter = this.currentFilter;
 		
-		// 清空现有数据
 		this.fullPlaylist = [];
-		this.playlists.clear();
 
-		// 获取最新的设置
 		const currentSettings = this.settingsRef();
 
 		if (!currentSettings.musicFolderPath || currentSettings.musicFolderPath.trim() === "") {
@@ -106,12 +101,10 @@ export class PlaylistManager {
 			musicFolderPath
 		);
 
-		// 创建播放列表项和歌单映射
 		this.fullPlaylist = [];
 
 		for (let index = 0; index < fileArray.length; index++) {
 			const file = fileArray[index];
-			// 从 MetadataManager 获取元数据（封面会延迟加载）
 			const savedMetadata = this.metadataManager.getMetadata(file.path);
 			const metadata = savedMetadata || {
 				title: file.basename,
@@ -128,23 +121,6 @@ export class PlaylistManager {
 				metadata: metadata,
 			};
 
-			// 将歌曲添加到对应的歌单中
-			const relativePath = file.path.substring(musicFolderPath.length);
-			const pathParts = relativePath.split('/').filter(part => part);
-			
-			if (pathParts.length > 1) {
-				// 属于子文件夹歌单
-				const playlistName = pathParts[0];
-				if (!this.playlists.has(playlistName)) {
-					this.playlists.set(playlistName, []);
-				}
-				// 确保不会重复添加同一首歌
-				const playlist = this.playlists.get(playlistName)!;
-				if (!playlist.some(t => t.path === track.path)) {
-					playlist.push(track);
-				}
-			}
-
 			this.fullPlaylist.push(track);
 
 			if ((index + 1) % this.scanBatchSize === 0 && index + 1 < fileArray.length) {
@@ -152,18 +128,11 @@ export class PlaylistManager {
 			}
 		}
 
-		// 恢复用户之前选择的分类（如果仍然有效）
-		if (savedCategory && savedCategory !== "all" && savedCategory !== "favorite") {
-			// 检查之前选择的歌单是否还存在
-			if (this.playlists.has(savedCategory)) {
-				this.currentCategory = savedCategory;
-			} else {
-				// 歌单不存在，回退到 "all"
-				this.currentCategory = "all";
-			}
+		// 恢复之前选择的筛选条件
+		if (savedFilter && savedFilter !== "all" && savedFilter !== "favorite") {
+			this.currentFilter = savedFilter;
 		} else {
-			// 恢复 "all" 或 "favorite" 分类
-			this.currentCategory = savedCategory;
+			this.currentFilter = savedFilter;
 		}
 
 		this.updateView();
@@ -210,33 +179,22 @@ export class PlaylistManager {
 	}
 
 	/**
-	 * 更新视图播放列表
+	 * 更新视图播放列表（按当前过滤器筛选）
 	 */
 	private updateView(): void {
 		let sourcePlaylist: MusicTrack[] = [];
 
-		switch (this.currentCategory) {
-			case "all":
-				sourcePlaylist = this.fullPlaylist;
-				break;
-			case "favorite":
-				sourcePlaylist = this.fullPlaylist.filter((track) =>
-					this.settings.favorites.includes(track.path)
-				);
-				break;
-			default:
-				// 检查是否是歌单名称
-				const playlistTracks = this.getPlaylistTracks(this.currentCategory);
-				if (playlistTracks.length > 0) {
-					sourcePlaylist = playlistTracks;
-				} else {
-					// 兼容旧的路径方式
-					sourcePlaylist = this.fullPlaylist.filter((track) =>
-						track.path.startsWith(this.currentCategory)
-					);
-				}
-				break;
-		}
+		sourcePlaylist = this.fullPlaylist.filter((track) => {
+			if (this.currentFilter.startsWith("artist:")) {
+				const artist = this.currentFilter.substring(7);
+				return track.metadata?.artist === artist;
+			}
+			if (this.currentFilter.startsWith("album:")) {
+				const album = this.currentFilter.substring(6);
+				return track.metadata?.album === album;
+			}
+			return true;
+		});
 
 		// 应用搜索过滤
 		if (this.searchQuery) {
@@ -281,15 +239,6 @@ export class PlaylistManager {
 	}
 
 	/**
-	 * 设置分类
-	 */
-	setCategory(category: CategoryType): void {
-		this.currentCategory = category;
-		this.updateView();
-		this.emit("onCategoryChange", category);
-	}
-
-	/**
 	 * 设置搜索查询
 	 */
 	setSearchQuery(query: string): void {
@@ -298,18 +247,79 @@ export class PlaylistManager {
 	}
 
 	/**
-	 * 获取所有歌单名称
+	 * 获取所有歌手列表
 	 */
-	getPlaylists(): string[] {
-		return Array.from(this.playlists.keys()).sort();
+	getAllArtists(): string[] {
+		const artists = new Set<string>();
+		for (const track of this.fullPlaylist) {
+			const artist = track.metadata?.artist;
+			if (artist && artist !== "未知艺术家") {
+				artists.add(artist);
+			}
+		}
+		return Array.from(artists).sort();
 	}
 
 	/**
-	 * 获取指定歌单的曲目
+	 * 获取所有专辑列表
 	 */
-	getPlaylistTracks(playlistName: string): MusicTrack[] {
-		const playlist = this.playlists.get(playlistName);
-		return playlist ? [...playlist] : [];
+	getAllAlbums(): string[] {
+		const albums = new Set<string>();
+		for (const track of this.fullPlaylist) {
+			const album = track.metadata?.album;
+			if (album && album !== "未知专辑") {
+				albums.add(album);
+			}
+		}
+		return Array.from(albums).sort();
+	}
+
+	/**
+	 * 获取歌手封面（该歌手第一首有封面的歌曲）
+	 */
+	getArtistCover(artist: string): string | null {
+		for (const track of this.fullPlaylist) {
+			if (track.metadata?.artist === artist && track.metadata?.cover) {
+				return track.metadata.cover;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * 获取专辑封面（该专辑第一首有封面的歌曲）
+	 */
+	getAlbumCover(album: string): string | null {
+		for (const track of this.fullPlaylist) {
+			if (track.metadata?.album === album && track.metadata?.cover) {
+				return track.metadata.cover;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * 按歌手筛选
+	 */
+	filterByArtist(artist: string): void {
+		this.currentFilter = `artist:${artist}`;
+		this.updateView();
+	}
+
+	/**
+	 * 按专辑筛选
+	 */
+	filterByAlbum(album: string): void {
+		this.currentFilter = `album:${album}`;
+		this.updateView();
+	}
+
+	/**
+	 * 显示所有歌曲
+	 */
+	showAllTracks(): void {
+		this.currentFilter = "all";
+		this.updateView();
 	}
 
 	/**
@@ -390,35 +400,6 @@ export class PlaylistManager {
 	}
 
 	/**
-	 * 切换收藏状态
-	 */
-	toggleFavorite(track?: MusicTrack): void {
-		const targetTrack = track || this.currentTrack;
-		if (!targetTrack) return;
-
-		const favIndex = this.settings.favorites.indexOf(targetTrack.path);
-		if (favIndex > -1) {
-			this.settings.favorites.splice(favIndex, 1);
-		} else {
-			this.settings.favorites.push(targetTrack.path);
-		}
-
-		// 如果当前显示收藏列表，更新视图
-		if (this.currentCategory === "favorite") {
-			this.updateView();
-		}
-	}
-
-	/**
-	 * 检查是否为收藏
-	 */
-	isFavorite(track?: MusicTrack): boolean {
-		const targetTrack = track || this.currentTrack;
-		if (!targetTrack) return false;
-		return this.settings.favorites.includes(targetTrack.path);
-	}
-
-	/**
 	 * 处理文件变化
 	 */
 	handleFileChange(path: string): void {
@@ -426,33 +407,27 @@ export class PlaylistManager {
 			path.startsWith(normalizePath(this.settings.musicFolderPath));
 
 		if (isInMusicFolder) {
-			// 删除相关元数据缓存
 			delete this.settings.metadata[path];
-
-			// 延迟重新加载播放列表
 			setTimeout(() => this.loadFullPlaylist(), 500);
 		}
 	}
 
 	/**
-	 * 获取可用分类
+	 * 获取当前筛选标签文本
 	 */
-	getCategories(): { value: string; label: string }[] {
-		const categories = [
-			{ value: "all", label: "所有歌曲" },
-			{ value: "favorite", label: "红心歌单" },
-		];
+	getFilterLabel(): string {
+		if (this.currentFilter === "all") return "所有歌曲";
+		if (this.currentFilter === "favorite") return "红心歌单";
+		if (this.currentFilter.startsWith("artist:")) return this.currentFilter.substring(7);
+		if (this.currentFilter.startsWith("album:")) return this.currentFilter.substring(6);
+		return "所有歌曲";
+	}
 
-		// 添加歌单分类
-		const playlists = this.getPlaylists();
-		playlists.forEach(playlistName => {
-			categories.push({
-				value: playlistName,
-				label: playlistName,
-			});
-		});
-
-		return categories;
+	/**
+	 * 获取当前分类 (兼容旧接口)
+	 */
+	getCurrentFilter(): CategoryType {
+		return this.currentFilter;
 	}
 
 	/**
@@ -473,7 +448,7 @@ export class PlaylistManager {
 	 * 获取当前分类
 	 */
 	getCurrentCategory(): CategoryType {
-		return this.currentCategory;
+		return this.currentFilter;
 	}
 
 	/**

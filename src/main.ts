@@ -322,12 +322,6 @@ export default class StatusBarMusicPlugin extends Plugin {
 		// 见 setupStatusBarEvents() 方法
 
 		// 音乐中心事件
-		this.musicHub.on("onFavoriteToggle", () => {
-			this.playlistManager.toggleFavorite();
-			this.updateFavoriteButton();
-			this.saveSettings();
-		});
-
 		// 黑胶唱片播放器事件
 		this.musicHub.on("onVinylPlayPause", () => {
 			this.togglePlayPause();
@@ -336,19 +330,41 @@ export default class StatusBarMusicPlugin extends Plugin {
 		});
 
 		this.musicHub.on("onCategoryChange", (category: string) => {
-			this.playlistManager.setCategory(category);
+			if (category === "all") {
+				this.playlistManager.showAllTracks();
+			}
 		});
 
 		this.musicHub.on("onSearch", (query: string) => {
 			this.playlistManager.setSearchQuery(query);
 		});
 
-		this.musicHub.on("onGetCategories", () => {
-			return this.playlistManager.getCategories();
+		this.musicHub.on("onFilterByArtist", (artist: string) => {
+			this.playlistManager.filterByArtist(artist);
 		});
 
-		this.musicHub.on("onGetCurrentCategory", () => {
-			return this.playlistManager.getCurrentCategory();
+		this.musicHub.on("onFilterByAlbum", (album: string) => {
+			this.playlistManager.filterByAlbum(album);
+		});
+
+		this.musicHub.on("onGetArtists", () => {
+			return this.playlistManager.getAllArtists();
+		});
+
+		this.musicHub.on("onGetAlbums", () => {
+			return this.playlistManager.getAllAlbums();
+		});
+
+		this.musicHub.on("onGetArtistCover", (artist: string) => {
+			return this.playlistManager.getArtistCover(artist);
+		});
+
+		this.musicHub.on("onGetAlbumCover", (album: string) => {
+			return this.playlistManager.getAlbumCover(album);
+		});
+
+		this.musicHub.on("onGetCurrentTrack", () => {
+			return this.playlistManager.getCurrentTrack();
 		});
 
 		this.musicHub.on("onModeToggle", () => {
@@ -431,7 +447,6 @@ export default class StatusBarMusicPlugin extends Plugin {
 			}
 			this.musicHub.updateCurrentTrack(track);
 			this.updateHubSideVinyls();
-			this.updateFavoriteButton();
 			// 不在这里调用 updatePlaylist()，避免高频重新渲染
 			// 只需要更新当前播放状态，而不是重新渲染整个列表
 			this.musicHub.updateCurrentPlayingTrack(track);
@@ -688,14 +703,6 @@ export default class StatusBarMusicPlugin extends Plugin {
 	}
 
 	/**
-	 * 更新收藏按钮
-	 */
-	private updateFavoriteButton(): void {
-		const isFavorite = this.playlistManager.isFavorite();
-		this.musicHub.updateFavoriteButton(isFavorite);
-	}
-
-	/**
 	 * 更新播放列表显示（带防抖）
 	 */
 	private updatePlaylist(): void {
@@ -796,8 +803,7 @@ export default class StatusBarMusicPlugin extends Plugin {
 		await this.playlistManager.loadFullPlaylist();
 		await this.playlistManager.refreshMetadata();
 		const playlist = this.playlistManager.getPlaylist();
-		const playlists = this.playlistManager.getPlaylists();
-		return { trackCount: playlist.length, playlistCount: playlists.length };
+		return { trackCount: playlist.length, playlistCount: 0 };
 	}
 
 	/**

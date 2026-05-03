@@ -1,4 +1,4 @@
-/* Status Bar Music Plugin - Music Hub Styles */
+﻿/* Status Bar Music Plugin - Music Hub Styles */
 
 /* 唱片强调色：根据主题自动选择对应颜色 */
 .theme-dark {
@@ -663,4 +663,38 @@
 	transform: scale(0.92) translateX(4px);
 }
 
-/* ============ 唱片轮播动画由 Web Animations API 驱动（MusicHubComponent.ts） ============ */
+
+
+/* ============ 歌手/专辑列表 ============ */
+
+.hub-metadata-grid {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	height: 250px;
+	overflow-y: auto;
+}
+
+/* 空状态 */
+.hub-grid-empty {
+	text-align: center;
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 20px;
+}
+
+/* 滚动条 */
+.hub-metadata-grid::-webkit-scrollbar {
+	width: 6px;
+}
+.hub-metadata-grid::-webkit-scrollbar-track {
+	background: var(--background-modifier-border);
+	border-radius: 3px;
+}
+.hub-metadata-grid::-webkit-scrollbar-thumb {
+	background: var(--text-muted);
+	border-radius: 3px;
+}
+.hub-metadata-grid::-webkit-scrollbar-thumb:hover {
+	background: var(--text-normal);
+}

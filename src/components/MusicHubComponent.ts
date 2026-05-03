@@ -1,4 +1,4 @@
-import { Menu, setIcon } from "obsidian";
+﻿import { setIcon } from "obsidian";
 import { MusicTrack, PlaybackMode } from "../types";
 import { CSS_CLASSES, ICONS } from "../utils/constants";
 import { clamp, formatTime } from "../utils/helpers";
@@ -8,10 +8,11 @@ import { VinylPlayer } from "./VinylPlayer";
 export class MusicHubComponent {
 	private containerEl: HTMLElement;
 	private functionBar: HTMLElement;
-	private favButton: HTMLButtonElement;
 	private searchInput: HTMLInputElement;
-	private playlistToggleButton: HTMLButtonElement;
+	private backButton: HTMLButtonElement;
 	private modeButton: HTMLButtonElement;
+	private artistButton: HTMLButtonElement;
+	private albumButton: HTMLButtonElement;
 	private controlsEl: HTMLElement;
 	private leftVinylButton: HTMLButtonElement;
 	private rightVinylButton: HTMLButtonElement;
@@ -20,34 +21,40 @@ export class MusicHubComponent {
 	private progressThumb: HTMLElement;
 	private timeDisplay: HTMLElement;
 	private playlistEl: HTMLUListElement;
+	private metadataGridEl: HTMLElement;
 	private vinylPlayer: VinylPlayer;
-	private floatingLyricsComponent: LyricsComponent | null = null; // 悬浮歌词组件
+	private floatingLyricsComponent: LyricsComponent | null = null;
 	private volumeButton: HTMLButtonElement;
 	private volumeSliderContainer: HTMLElement;
 	private volumeSlider: HTMLInputElement;
-	private currentVolume: number = 1; // 默认音量 100%
+	private currentVolume: number = 1;
 
-	private isProgressDragging = false; // 进度条拖拽状态
-	private isHubDragging = false; // 窗口拖拽状态
-	private switchDirection: "prev" | "next" | null = null; // 切歌方向
-	private pendingCenterUpdate = false; // 是否有延迟的中心唱片更新
-	private pendingTrackData: MusicTrack | null = null; // 缓冲的曲目数据
-	private carouselAnimations: Animation[] = []; // 当前轮播动画
-	private carouselTimer: number | null = null; // 轮播阶段计时器
-	private floatingHighlightColorDark: string = ""; // 悬浮歌词深色高亮
-	private floatingHighlightColorLight: string = ""; // 悬浮歌词浅色高亮
+	private isProgressDragging = false;
+	private isHubDragging = false;
+	private switchDirection: "prev" | "next" | null = null;
+	private pendingCenterUpdate = false;
+	private pendingTrackData: MusicTrack | null = null;
+	private carouselAnimations: Animation[] = [];
+	private carouselTimer: number | null = null;
+	private floatingHighlightColorDark: string = "";
+	private floatingHighlightColorLight: string = "";
 	private isVisible = false;
 	private dragOffset = { x: 0, y: 0 };
 	private dragHandle: HTMLElement | null = null;
-	private closeOnClickOutside = false; // 是否点击外部关闭
+	private closeOnClickOutside = false;
 	private boundHandleClickOutside: ((e: MouseEvent) => void) | null = null;
+	private isMetadataListMode: boolean = false;
 
 	private events: {
-		onFavoriteToggle?: () => void;
 		onSearch?: (query: string) => void;
 		onCategoryChange?: (category: string) => void;
-		onGetCategories?: () => { value: string; label: string }[];
-		onGetCurrentCategory?: () => string;
+		onFilterByArtist?: (artist: string) => void;
+		onFilterByAlbum?: (album: string) => void;
+		onGetArtists?: () => string[];
+		onGetAlbums?: () => string[];
+		onGetArtistCover?: (artist: string) => string | null;
+		onGetAlbumCover?: (album: string) => string | null;
+		onGetCurrentTrack?: () => MusicTrack | null;
 		onModeToggle?: () => void;
 		onPrevious?: () => void;
 		onNext?: () => void;
@@ -57,8 +64,8 @@ export class MusicHubComponent {
 		onVinylPlayPause?: () => void;
 		onSeekToTime?: (time: number) => void;
 		onVolumeChange?: (volume: number) => void;
-		onFloatingLyricsShow?: () => void; // 悬浮歌词显示时触发
-		onLyricsButtonStateChange?: (active: boolean) => void; // 歌词按钮状态变化时触发
+		onFloatingLyricsShow?: () => void;
+		onLyricsButtonStateChange?: (active: boolean) => void;
 	} = {};
 
 	constructor() {
@@ -75,18 +82,19 @@ export class MusicHubComponent {
 		});
 		this.containerEl.hide();
 
-		// 添加拖拽手柄
 		this.dragHandle = this.containerEl.createEl("div", {
 			cls: "hub-drag-handle",
 		});
 
-		// 功能按钮栏
 		this.createFunctionBar();
-
-		// 控制区域
 		this.createControls();
 
-		// 播放列表
+		// 歌手/专辑网格容器（替代播放列表）
+		this.metadataGridEl = this.containerEl.createEl("div", {
+			cls: "hub-metadata-grid",
+		});
+		this.metadataGridEl.hide();
+
 		this.playlistEl = this.containerEl.createEl("ul", {
 			cls: "hub-playlist",
 		});
@@ -100,7 +108,14 @@ export class MusicHubComponent {
 			cls: "hub-function-bar",
 		});
 
-		// 搜索框
+		// 返回按钮（搜索框前，默认隐藏，仅在歌手/专辑视图显示）
+		this.backButton = this.functionBar.createEl("button", {
+			cls: "hub-control-button",
+			attr: { title: "返回播放列表" },
+		});
+		setIcon(this.backButton, "arrow-left");
+		this.backButton.hide();
+
 		this.searchInput = this.functionBar.createEl("input", {
 			cls: "hub-search-input",
 			type: "text",
@@ -165,17 +180,31 @@ export class MusicHubComponent {
 			cls: "hub-time-control-container",
 		});
 
-		// 播放模式按钮（左侧）
+		// 播放模式按钮（最左侧）
 		this.modeButton = timeControlContainer.createEl("button", {
 			cls: "hub-control-button",
 		});
 		setIcon(this.modeButton, ICONS.REPEAT);
 
-		// 播放列表选择器
-		this.playlistToggleButton = timeControlContainer.createEl("button", {
-			cls: "hub-control-button hub-playlist-toggle",
+		// 音量按钮（原来歌单按钮的位置）
+		const volumeControlContainer = timeControlContainer.createEl("div", {
+			cls: "hub-volume-control-container",
 		});
-		setIcon(this.playlistToggleButton, ICONS.LIST);
+		this.volumeButton = volumeControlContainer.createEl("button", {
+			cls: "hub-control-button hub-volume-button",
+		});
+		setIcon(this.volumeButton, ICONS.VOLUME);
+
+		// 音量滑块容器（初始隐藏，弹出式）
+		this.volumeSliderContainer = volumeControlContainer.createEl("div", {
+			cls: "hub-volume-slider-container",
+		});
+		this.volumeSliderContainer.hide();
+		this.volumeSlider = this.volumeSliderContainer.createEl("input", {
+			cls: "hub-volume-slider",
+			type: "range",
+			attr: { min: "0", max: "100", value: "100" },
+		});
 
 		// 时间显示（中间）
 		this.timeDisplay = timeControlContainer.createEl("div", {
@@ -183,54 +212,27 @@ export class MusicHubComponent {
 			text: "--:-- / --:--",
 		});
 
-		// 音量控制容器
-		const volumeControlContainer = timeControlContainer.createEl("div", {
-			cls: "hub-volume-control-container",
+		// 歌手按钮
+		this.artistButton = timeControlContainer.createEl("button", {
+			cls: "hub-control-button hub-artist-button",
+			attr: { title: "按歌手筛选" },
 		});
+		setIcon(this.artistButton, "user");
 
-		// 音量按钮
-		this.volumeButton = volumeControlContainer.createEl("button", {
-			cls: "hub-control-button hub-volume-button",
+		// 专辑按钮
+		this.albumButton = timeControlContainer.createEl("button", {
+			cls: "hub-control-button hub-album-button",
+			attr: { title: "按专辑筛选" },
 		});
-		setIcon(this.volumeButton, ICONS.VOLUME);
-
-		// 音量滑块容器（初始隐藏）
-		this.volumeSliderContainer = volumeControlContainer.createEl("div", {
-			cls: "hub-volume-slider-container",
-		});
-		this.volumeSliderContainer.hide();
-
-		// 音量滑块
-		this.volumeSlider = this.volumeSliderContainer.createEl("input", {
-			cls: "hub-volume-slider",
-			type: "range",
-			attr: {
-				min: "0",
-				max: "100",
-				value: "100",
-			},
-		});
-
-		// 收藏按钮（右侧）
-		this.favButton = timeControlContainer.createEl("button", {
-			cls: "hub-control-button hub-favorite-button",
-		});
-		setIcon(this.favButton, ICONS.HEART);
+		setIcon(this.albumButton, "disc");
 	}
 
 	/**
 	 * 设置事件监听器
 	 */
 	private setupEventListeners(): void {
-		// 拖拽事件
 		this.dragHandle?.addEventListener("mousedown", this.handleHubDragStart);
 
-		// 功能按钮事件
-		this.favButton.addEventListener("click", () => {
-			this.events.onFavoriteToggle?.();
-		});
-
-		// 搜索框事件
 		this.searchInput.addEventListener("input", () => {
 			this.events.onSearch?.(this.searchInput.value);
 		});
@@ -256,13 +258,30 @@ export class MusicHubComponent {
 			}
 		});
 
-		// 播放列表切换按钮事件
-		this.playlistToggleButton.addEventListener("click", (e) => {
-			this.showPlaylistSelector(e);
+		// 返回按钮事件：无论在歌手列表还是筛选后的播放列表，都返回完整列表
+		this.backButton.addEventListener("click", (e) => {
+			e.stopPropagation();
+			if (this.isMetadataListMode) {
+				this.exitMetadataMode();
+			}
+			this.events.onCategoryChange?.("all");
+			this.backButton.hide();
+		});
+
+		// 歌手按钮事件 - 显示歌手列表
+		this.artistButton.addEventListener("click", (e) => {
+			e.stopPropagation();
+			this.showArtistList();
+		});
+
+		// 专辑按钮事件 - 显示专辑列表
+		this.albumButton.addEventListener("click", (e) => {
+			e.stopPropagation();
+			this.showAlbumList();
 		});
 
 		this.modeButton.addEventListener("click", (e) => {
-			e.stopPropagation(); // 防止事件冒泡导致关闭播放器
+			e.stopPropagation();
 			this.events.onModeToggle?.();
 		});
 
@@ -557,10 +576,14 @@ export class MusicHubComponent {
 
 			this.isVisible = true;
 
-			// 如果启用了点击外部关闭，添加监听器
 			if (this.closeOnClickOutside) {
 				this.addClickOutsideListener();
 			}
+
+			// 定位到当前播放曲目
+			requestAnimationFrame(() => {
+				this.scrollToCurrentInList();
+			});
 		} catch (error) {
 			// 静默处理显示错误
 		}
@@ -640,14 +663,124 @@ export class MusicHubComponent {
 	}
 
 	/**
-	 * 更新收藏按钮状态
+	 * 定位到当前播放项（playlist 或 metadata 列表）
 	 */
-	updateFavoriteButton(isFavorite: boolean): void {
-		if (isFavorite) {
-			this.favButton.addClass(CSS_CLASSES.IS_FAVORITE);
+	scrollToCurrentInList(): void {
+		let target: HTMLElement | null = null;
+
+		if (this.isMetadataListMode) {
+			// 歌手/专辑列表：按名称匹配
+			const ct = this.events.onGetCurrentTrack?.();
+			if (ct) {
+				const names = Array.from(this.metadataGridEl.querySelectorAll(".playlist-item-name"));
+				for (const name of names) {
+					const t = (name as HTMLElement).textContent || "";
+					if (t === ct.metadata?.artist || t === ct.metadata?.album) {
+						target = (name as HTMLElement).closest(".playlist-item") as HTMLElement;
+						break;
+					}
+				}
+			}
 		} else {
-			this.favButton.removeClass(CSS_CLASSES.IS_FAVORITE);
+			// 播放列表：按 is-playing class 定位
+			target = this.playlistEl.querySelector(`.${CSS_CLASSES.IS_PLAYING}`) as HTMLElement;
 		}
+
+		if (target) {
+			target.scrollIntoView({ behavior: "smooth", block: "center" });
+		}
+	}
+
+	/**
+	 * 切换到歌手列表视图
+	 */
+	private showArtistList(): void {
+		const artists = this.events.onGetArtists?.() || [];
+		this.isMetadataListMode = true;
+		this.backButton.show();
+		this.renderMetadataGrid("歌手", artists, "user",
+			(a: string) => this.events.onGetArtistCover?.(a) ?? null,
+			(a: string) => { this.exitMetadataMode(); this.events.onFilterByArtist?.(a); }
+		);
+	}
+
+	/**
+	 * 切换到专辑列表视图
+	 */
+	private showAlbumList(): void {
+		const albums = this.events.onGetAlbums?.() || [];
+		this.isMetadataListMode = true;
+		this.backButton.show();
+		this.renderMetadataGrid("专辑", albums, "disc",
+			(a: string) => this.events.onGetAlbumCover?.(a) ?? null,
+			(a: string) => { this.exitMetadataMode(); this.events.onFilterByAlbum?.(a); }
+		);
+	}
+
+	/**
+	 * 退出元数据模式（不隐藏返回按钮，筛选后仍需返回）
+	 */
+	private exitMetadataMode(): void {
+		this.isMetadataListMode = false;
+		this.metadataGridEl.hide();
+		this.playlistEl.show();
+	}
+
+	/**
+	 * 渲染元数据列表（复用播放列表样式：40px封面 + 名称）
+	 */
+	private renderMetadataGrid(
+		_title: string,
+		items: string[],
+		icon: string,
+		getCover: (item: string) => string | null,
+		onSelect: (item: string) => void
+	): void {
+		this.playlistEl.hide();
+		this.metadataGridEl.empty();
+		this.metadataGridEl.show();
+
+		// 空数据
+		if (items.length === 0) {
+			this.metadataGridEl.createEl("div", { cls: "hub-grid-empty", text: "暂无数据" });
+			return;
+		}
+
+		// 列表项（复用 playlist-item 样式）
+		for (const item of items) {
+			const li = this.metadataGridEl.createEl("div", { cls: "playlist-item" });
+			const content = li.createEl("div", { cls: "playlist-item-content" });
+
+			// 封面
+			const cover = content.createEl("div", { cls: "playlist-item-cover" });
+			const coverUrl = getCover(item);
+			if (coverUrl) {
+				const img = cover.createEl("img", { cls: "playlist-cover-img" });
+				img.src = coverUrl;
+				img.onerror = () => { cover.empty(); setIcon(cover, icon); };
+			} else {
+				setIcon(cover, icon);
+			}
+
+			// 信息
+			const info = content.createEl("div", { cls: "playlist-item-info" });
+			info.createEl("div", { cls: "playlist-item-name", text: item });
+
+			li.addEventListener("click", () => onSelect(item));
+		}
+
+		// 双重 rAF 确保 DOM 布局完成后定位到当前播放项
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				this.scrollToCurrentInList();
+			});
+		});
+	}
+
+	/**
+	 * 更新收藏按钮状态（功能已删除，空实现保留 API 兼容）
+	 */
+	updateFavoriteButton(_isFavorite: boolean): void {
 	}
 
 	/**
@@ -1103,14 +1236,11 @@ export class MusicHubComponent {
 	): void {
 		this.playlistEl.empty();
 
-		// 如果元数据未初始化，显示加载状态
 		if (!isMetadataInitialized) {
 			this.playlistEl.createEl("li", {
 				text: "正在加载音乐库...",
 				cls: "playlist-loading",
 			});
-
-			// 为加载状态应用无封面背景样式
 			this.applyNoCoverBackground();
 			return;
 		}
@@ -1120,22 +1250,8 @@ export class MusicHubComponent {
 				text: "此列表为空",
 				cls: "playlist-empty",
 			});
-
-			// 为空列表应用无封面背景样式
 			this.applyNoCoverBackground();
 			return;
-		}
-
-		// 有歌曲时，确保背景由当前播放歌曲决定
-		// 但只有当当前歌曲在新歌单中时才应用
-		const isCurrentTrackInNewPlaylist =
-			currentTrack &&
-			tracks.some((track) => track.id === currentTrack.id);
-		if (tracks.length > 0 && isCurrentTrackInNewPlaylist && currentTrack) {
-			this.updateBackgroundCover(currentTrack);
-		} else if (tracks.length > 0) {
-			// 如果当前歌曲不在新歌单中，使用新歌单第一首歌的封面（如果有）
-			this.updateBackgroundCover(tracks[0]);
 		}
 
 		tracks.forEach((track) => {
@@ -1248,6 +1364,13 @@ export class MusicHubComponent {
 				this.events.onTrackSelect?.(track);
 			});
 		});
+
+		// 双重 rAF 确保 DOM 布局完成后定位
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				this.scrollToCurrentTrack();
+			});
+		});
 	}
 
 	/**
@@ -1317,36 +1440,5 @@ export class MusicHubComponent {
 
 		this.containerEl.remove();
 		this.events = {};
-	}
-
-	/**
-	 * 显示歌单选择器（使用 Obsidian 默认菜单）
-	 */
-	private showPlaylistSelector(e: MouseEvent): void {
-		e.preventDefault();
-		e.stopPropagation();
-
-		const categories = this.events.onGetCategories?.() || [];
-		const currentCategory = this.events.onGetCurrentCategory?.() || "all";
-
-		const menu = new Menu();
-
-		categories.forEach((category: { value: string; label: string }) => {
-			menu.addItem((item) => {
-				item.setTitle(category.label);
-				if (category.value === currentCategory) {
-					item.setIcon("check");
-				}
-				item.onClick(() => {
-					this.events.onCategoryChange?.(category.value as any);
-				});
-			});
-		});
-
-		const rect = this.playlistToggleButton.getBoundingClientRect();
-		menu.showAtPosition({ x: rect.left, y: rect.bottom });
-
-		// 确保菜单显示在 Hub 之上
-		(menu as any).dom?.style?.setProperty("z-index", "10000", "important");
 	}
 }

@@ -206,10 +206,10 @@ export class SettingsTab extends PluginSettingTab {
 
 			new Notice("正在扫描音乐文件...", 5000);
 
-			const { trackCount, playlistCount } = await this.plugin.scanMusicLibrary();
+			const { trackCount } = await this.plugin.scanMusicLibrary();
 			await this.saveCallback();
 
-			new Notice(`扫描完成！共 ${trackCount} 首歌曲，${playlistCount} 个歌单`);
+			new Notice(`扫描完成！共 ${trackCount} 首歌曲`);
 		} catch {
 			new Notice("扫描失败，请检查文件夹路径。");
 		}

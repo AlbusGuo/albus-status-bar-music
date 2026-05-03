@@ -1,4 +1,4 @@
-import { App, TAbstractFile, TFile, TFolder, normalizePath } from "obsidian";
+import { App, TFile, TFolder, normalizePath } from "obsidian";
 import { PlaybackMode, PluginSettings } from "../types";
 
 export const DEFAULT_SETTINGS: PluginSettings = {
@@ -35,7 +35,7 @@ export function isSupportedAudioFile(filename: string): boolean {
 }
 
 /**
- * 仅递归遍历指定音乐目录，避免扫描整个 vault
+ * 仅读取音乐文件夹内直接包含的音频文件，不递归子文件夹
  */
 export function collectSupportedAudioFilesFromFolder(
 	app: App,
@@ -56,22 +56,11 @@ export function collectSupportedAudioFilesFromFolder(
 		return [];
 	}
 
+	// 仅扫描直接子文件，不递归进入子文件夹
 	const collectedFiles: TFile[] = [];
-	const stack: TAbstractFile[] = [...root.children];
-
-	while (stack.length > 0) {
-		const current = stack.pop();
-		if (!current) {
-			continue;
-		}
-
-		if (current instanceof TFolder) {
-			stack.push(...current.children);
-			continue;
-		}
-
-		if (current instanceof TFile && isSupportedAudioFile(current.name)) {
-			collectedFiles.push(current);
+	for (const child of root.children) {
+		if (child instanceof TFile && isSupportedAudioFile(child.name)) {
+			collectedFiles.push(child);
 		}
 	}
 
